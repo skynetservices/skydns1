@@ -106,7 +106,11 @@ func (r *DefaultRegistry) GetUUID(uuid string) (s msg.Service, err error) {
 	defer r.mutex.Unlock()
 
 	if s, ok := r.nodes[uuid]; ok {
-		return s.value, nil
+		s.value.TTL = getUpdatedTTL(s)
+
+		if s.value.TTL >= 1 {
+			return s.value, nil
+		}
 	}
 
 	return s, ErrNotExists
@@ -263,14 +267,22 @@ func (n *node) get(tree []string) (services []msg.Service, err error) {
 			}
 
 			for _, s := range n.leaves {
-				services = append(services, s.value)
+				s.value.TTL = getUpdatedTTL(s)
+
+				if s.value.TTL > 1 {
+					services = append(services, s.value)
+				}
 			}
 		default:
 			if _, ok := n.leaves[tree[0]]; !ok {
 				return services, ErrNotExists
 			}
 
-			services = append(services, n.leaves[tree[0]].value)
+			n.leaves[tree[0]].value.TTL = getUpdatedTTL(n.leaves[tree[0]])
+
+			if n.leaves[tree[0]].value.TTL > 1 {
+				services = append(services, n.leaves[tree[0]].value)
+			}
 		}
 
 		return
@@ -304,6 +316,18 @@ func (n *node) get(tree []string) (services []msg.Service, err error) {
 	}
 
 	return
+}
+
+func getUpdatedTTL(n *node) uint32 {
+	d := n.expires.Sub(time.Now())
+
+	ttl := uint32(d.Seconds())
+
+	if ttl < 1 {
+		return 0
+	}
+
+	return ttl
 }
 
 func getRegistryKey(s msg.Service) string {

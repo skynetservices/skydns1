@@ -207,7 +207,7 @@ func TestGetUUID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if s != services[0] {
+	if s.UUID != services[0].UUID {
 		t.Fatal("Failed to retrieve proper service")
 	}
 }
@@ -238,8 +238,8 @@ func TestUpdateTTL(t *testing.T) {
 		t.Fatal("Failed to return correct services")
 	}
 
-	// Validate TTL and Expiration
-	if results[0].TTL != 10 {
+	// Validate TTL and Expiration (set to 9, because by the time this executes there is less than 10 seconds remaining)
+	if results[0].TTL != 9 {
 		t.Fatal("TTL was not updated", results[0].TTL)
 	}
 

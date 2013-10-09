@@ -358,6 +358,7 @@ func (s *Server) addServiceHTTPHandler(w http.ResponseWriter, req *http.Request)
 	var serv msg.Service
 
 	if err := json.NewDecoder(req.Body).Decode(&serv); err != nil {
+		log.Println("Error: ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
