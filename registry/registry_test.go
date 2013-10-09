@@ -169,6 +169,17 @@ func TestGet(t *testing.T) {
 		t.Fatal("Failed to return correct services")
 	}
 
+	// Test only supplying any for environment
+	results, err = reg.Get("any")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(results) != 2 {
+		t.Fatal("Failed to return correct services")
+	}
+
 	// Test trailing .
 	results, err = reg.Get("testservice.production.")
 
