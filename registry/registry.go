@@ -238,6 +238,7 @@ func (n *node) add(tree []string, s msg.Service) (*node, error) {
 
 	// Forward entry
 	k := tree[len(tree)-1]
+
 	if _, ok := n.leaves[k]; !ok {
 		n.leaves[k] = newNode()
 		n.leaves[k].depth = n.depth + 1
@@ -319,6 +320,10 @@ func (n *node) get(tree []string) (services []msg.Service, err error) {
 }
 
 func getUpdatedTTL(n *node) uint32 {
+	if n.value.TTL == 0 {
+		return 0
+	}
+
 	d := n.expires.Sub(time.Now())
 
 	ttl := uint32(d.Seconds())
@@ -331,7 +336,7 @@ func getUpdatedTTL(n *node) uint32 {
 }
 
 func getRegistryKey(s msg.Service) string {
-	return strings.ToLower(fmt.Sprintf("%s.%s.%s.%s.%s.%s", s.UUID, s.Host, s.Region, strings.Replace(s.Version, ".", "-", -1), s.Name, s.Environment))
+	return strings.ToLower(fmt.Sprintf("%s.%s.%s.%s.%s.%s", s.UUID, strings.Replace(s.Host, ".", "-", -1), s.Region, strings.Replace(s.Version, ".", "-", -1), s.Name, s.Environment))
 }
 
 func getExpirationTime(ttl uint32) time.Time {
