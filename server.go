@@ -259,48 +259,53 @@ func (s *Server) joinHandler(w http.ResponseWriter, req *http.Request) {
 func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	m := new(dns.Msg)
 	m.SetReply(req)
-
 	m.Answer = make([]dns.RR, 0, 10)
+
+	defer w.WriteMsg(m)
+
+	if len(req.Question) < 1 {
+		return
+	}
+
+	q := req.Question[0]
 
 	var weight uint16
 
-	for _, q := range req.Question {
-		if q.Qtype == dns.TypeANY || q.Qtype == dns.TypeSRV {
-			log.Printf("Received DNS Request for %q from %q", q.Name, w.RemoteAddr())
-			services, err := s.registry.Get(q.Name)
+	if q.Qtype == dns.TypeANY || q.Qtype == dns.TypeSRV {
+		log.Printf("Received DNS Request for %q from %q", q.Name, w.RemoteAddr())
+		services, err := s.registry.Get(q.Name)
+
+		if err != nil {
+			log.Println("Error: ", err)
+			return
+		}
+
+		if len(services) > 0 {
+			weight = uint16(math.Floor(float64(100 / len(services))))
+		} else {
+			weight = 0
+		}
+
+		for _, serv := range services {
+			// TODO: Dynamically set weight
+			m.Answer = append(m.Answer, &dns.SRV{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeSRV, Class: dns.ClassINET, Ttl: serv.TTL}, Priority: 10, Weight: weight, Port: serv.Port, Target: serv.Host + "."})
+		}
+
+		// Append matching entries in different region than requested with a higher priority
+		labels := dns.SplitDomainName(q.Name)
+
+		pos := len(labels) - 4
+		if len(labels) >= 4 && labels[pos] != "any" && labels[pos] != "all" {
+			region := labels[pos]
+			labels[pos] = "any"
+
+			// TODO: This is pretty much a copy of the above, and should be abstracted
+			additionalServices, err := s.registry.Get(strings.Join(labels, "."))
 
 			if err != nil {
 				log.Println("Error: ", err)
-				continue
-			}
-
-			if len(services) > 0 {
-				weight = uint16(math.Floor(float64(100 / len(services))))
+				return
 			} else {
-				weight = 0
-			}
-
-			for _, serv := range services {
-				// TODO: Dynamically set weight
-				m.Answer = append(m.Answer, &dns.SRV{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeSRV, Class: dns.ClassINET, Ttl: serv.TTL}, Priority: 10, Weight: weight, Port: serv.Port, Target: serv.Host + "."})
-			}
-
-			// Append matching entries in different region than requested with a higher priority
-			labels := dns.SplitDomainName(q.Name)
-
-			pos := len(labels) - 4
-			if len(labels) >= 4 && labels[pos] != "any" && labels[pos] != "all" {
-				region := labels[pos]
-				labels[pos] = "any"
-
-				// TODO: This is pretty much a copy of the above, and should be abstracted
-				additionalServices, err := s.registry.Get(strings.Join(labels, "."))
-
-				if err != nil {
-					log.Println("Error: ", err)
-					continue
-				}
-
 				if len(additionalServices) > 0 {
 					weight = uint16(math.Floor(float64(100 / (len(additionalServices) - len(services)))))
 				} else {
@@ -319,9 +324,6 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 			}
 		}
 	}
-
-	// TODO: If an error occurs, maybe return a TXT section? dns library may have error support as well
-	w.WriteMsg(m)
 }
 
 // Returns the connection string.
