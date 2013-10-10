@@ -176,7 +176,7 @@ func TestUpdateTTL(t *testing.T) {
 		t.Fatal("Failed to update TTL")
 	}
 
-	if serv, err := s.registry.GetUUID(m.UUID); err != nil || serv.TTL != 25 {
+	if serv, err := s.registry.GetUUID(m.UUID); err != nil || serv.TTL != 24 {
 		t.Fatal("Failed to update TTL", err, serv.TTL)
 	}
 }
@@ -239,7 +239,7 @@ func TestGetService(t *testing.T) {
 	}
 
 	// Newline is expected
-	expected := []byte(`{"UUID":"123","Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"localhost","Port":9000,"TTL":4}
+	expected := []byte(`{"UUID":"123","Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"localhost","Port":9000,"TTL":3}
 `)
 
 	if !bytes.Equal(resp.Body.Bytes(), expected) {
@@ -333,7 +333,7 @@ var dnsTestCases = []dnsTestCase{
 			dns.SRV{
 				Hdr: dns.RR_Header{
 					Name:   "testservice.production.",
-					Ttl:    31,
+					Ttl:    30,
 					Rrtype: dns.TypeSRV,
 				},
 				Priority: 10,
@@ -344,7 +344,7 @@ var dnsTestCases = []dnsTestCase{
 			dns.SRV{
 				Hdr: dns.RR_Header{
 					Name:   "testservice.production.",
-					Ttl:    34,
+					Ttl:    33,
 					Rrtype: dns.TypeSRV,
 				},
 				Priority: 10,
@@ -355,7 +355,7 @@ var dnsTestCases = []dnsTestCase{
 			dns.SRV{
 				Hdr: dns.RR_Header{
 					Name:   "testservice.production.",
-					Ttl:    35,
+					Ttl:    34,
 					Rrtype: dns.TypeSRV,
 				},
 				Priority: 10,
@@ -373,7 +373,7 @@ var dnsTestCases = []dnsTestCase{
 			dns.SRV{
 				Hdr: dns.RR_Header{
 					Name:   "region1.any.testservice.production.",
-					Ttl:    31,
+					Ttl:    30,
 					Rrtype: dns.TypeSRV,
 				},
 				Priority: 10,
@@ -384,7 +384,7 @@ var dnsTestCases = []dnsTestCase{
 			dns.SRV{
 				Hdr: dns.RR_Header{
 					Name:   "region1.any.testservice.production.",
-					Ttl:    34,
+					Ttl:    33,
 					Rrtype: dns.TypeSRV,
 				},
 				Priority: 20,
@@ -395,7 +395,7 @@ var dnsTestCases = []dnsTestCase{
 			dns.SRV{
 				Hdr: dns.RR_Header{
 					Name:   "region1.any.testservice.production.",
-					Ttl:    35,
+					Ttl:    34,
 					Rrtype: dns.TypeSRV,
 				},
 				Priority: 20,
