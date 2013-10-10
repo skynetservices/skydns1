@@ -156,6 +156,7 @@ This is where we've changed things up a bit, notice we used the "any" wildcard f
 ##Roadmap
 As awesome as SkyDNS is in it's current state we plan to to further development with the following.
 
+* Handle Priorities for explicitly supplied hosts/uuids. This brings up an interesting question, if you supply a host or region should it only return exact matches, or should it work similar to regions where your supplied value gets a higher priority than others.
 * More comprehensive test suite
 * Validation of services
 * Benchmarks / Performance Improvements
