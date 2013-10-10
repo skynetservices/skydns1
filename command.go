@@ -5,6 +5,7 @@ import (
 	"github.com/skynetservices/skydns/msg"
 	"github.com/skynetservices/skydns/registry"
 	"log"
+	"time"
 )
 
 // Command for adding service to registry
@@ -14,6 +15,10 @@ type AddServiceCommand struct {
 
 // Creates a new AddServiceCommand
 func NewAddServiceCommand(s msg.Service) *AddServiceCommand {
+	log.Println(s)
+	s.Expires = getExpirationTime(s.TTL)
+	log.Println(s)
+
 	return &AddServiceCommand{s}
 }
 
@@ -33,13 +38,14 @@ func (c *AddServiceCommand) Apply(server *raft.Server) (interface{}, error) {
 }
 
 type UpdateTTLCommand struct {
-	UUID string
-	TTL  uint32
+	UUID    string
+	TTL     uint32
+	Expires time.Time
 }
 
 // Creates a new UpdateTTLCommand
 func NewUpdateTTLCommand(uuid string, ttl uint32) *UpdateTTLCommand {
-	return &UpdateTTLCommand{uuid, ttl}
+	return &UpdateTTLCommand{uuid, ttl, getExpirationTime(ttl)}
 }
 
 // Name of command
@@ -52,7 +58,7 @@ func (c *UpdateTTLCommand) Apply(server *raft.Server) (interface{}, error) {
 	log.Println("Updating Service:", c.UUID)
 
 	reg := server.Context().(registry.Registry)
-	err := reg.UpdateTTL(c.UUID, c.TTL)
+	err := reg.UpdateTTL(c.UUID, c.TTL, c.Expires)
 
 	return c.UUID, err
 }
@@ -79,4 +85,8 @@ func (c *RemoveServiceCommand) Apply(server *raft.Server) (interface{}, error) {
 	err := reg.RemoveUUID(c.UUID)
 
 	return c.UUID, err
+}
+
+func getExpirationTime(ttl uint32) time.Time {
+	return time.Now().Add(time.Duration(ttl) * time.Second)
 }

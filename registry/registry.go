@@ -21,7 +21,7 @@ type Registry interface {
 	GetExpired() []string
 	Remove(s msg.Service) error
 	RemoveUUID(uuid string) error
-	UpdateTTL(uuid string, ttl uint32) error
+	UpdateTTL(uuid string, ttl uint32, expires time.Time) error
 	Len() int
 }
 
@@ -72,10 +72,11 @@ func (r *DefaultRegistry) RemoveUUID(uuid string) error {
 
 // Updates the TTL of a service, as well as pushes the expiration time out TTL seconds from now.
 // This serves as a ping, for the service to keep SkyDNS aware of it's existence so that it is not expired, and purged.
-func (r *DefaultRegistry) UpdateTTL(uuid string, ttl uint32) error {
+func (r *DefaultRegistry) UpdateTTL(uuid string, ttl uint32, expires time.Time) error {
 	if n, ok := r.nodes[uuid]; ok {
 		n.value.TTL = ttl
-		n.expires = getExpirationTime(ttl)
+		n.value.Expires = expires
+
 		return nil
 	}
 
@@ -106,7 +107,7 @@ func (r *DefaultRegistry) GetUUID(uuid string) (s msg.Service, err error) {
 	defer r.mutex.Unlock()
 
 	if s, ok := r.nodes[uuid]; ok {
-		s.value.TTL = getUpdatedTTL(s)
+		s.value.TTL = s.value.RemainingTTL()
 
 		if s.value.TTL >= 1 {
 			return s.value, nil
@@ -158,7 +159,7 @@ func (r *DefaultRegistry) GetExpired() (uuids []string) {
 	now := time.Now()
 
 	for _, n := range r.nodes {
-		if now.After(n.expires) {
+		if now.After(n.value.Expires) {
 			uuids = append(uuids, n.value.UUID)
 		}
 	}
@@ -175,8 +176,7 @@ type node struct {
 	depth  int
 	length int
 
-	value   msg.Service
-	expires time.Time
+	value msg.Service
 }
 
 func newNode() *node {
@@ -225,10 +225,9 @@ func (n *node) add(tree []string, s msg.Service) (*node, error) {
 		}
 
 		n.leaves[tree[0]] = &node{
-			value:   s,
-			expires: getExpirationTime(s.TTL),
-			leaves:  make(map[string]*node),
-			depth:   n.depth + 1,
+			value:  s,
+			leaves: make(map[string]*node),
+			depth:  n.depth + 1,
 		}
 
 		n.length++
@@ -268,7 +267,7 @@ func (n *node) get(tree []string) (services []msg.Service, err error) {
 			}
 
 			for _, s := range n.leaves {
-				s.value.TTL = getUpdatedTTL(s)
+				s.value.UpdateTTL()
 
 				if s.value.TTL > 1 {
 					services = append(services, s.value)
@@ -279,7 +278,7 @@ func (n *node) get(tree []string) (services []msg.Service, err error) {
 				return services, ErrNotExists
 			}
 
-			n.leaves[tree[0]].value.TTL = getUpdatedTTL(n.leaves[tree[0]])
+			n.leaves[tree[0]].value.UpdateTTL()
 
 			if n.leaves[tree[0]].value.TTL > 1 {
 				services = append(services, n.leaves[tree[0]].value)
@@ -319,26 +318,6 @@ func (n *node) get(tree []string) (services []msg.Service, err error) {
 	return
 }
 
-func getUpdatedTTL(n *node) uint32 {
-	if n.value.TTL == 0 {
-		return 0
-	}
-
-	d := n.expires.Sub(time.Now())
-
-	ttl := uint32(d.Seconds())
-
-	if ttl < 1 {
-		return 0
-	}
-
-	return ttl
-}
-
 func getRegistryKey(s msg.Service) string {
 	return strings.ToLower(fmt.Sprintf("%s.%s.%s.%s.%s.%s", s.UUID, strings.Replace(s.Host, ".", "-", -1), s.Region, strings.Replace(s.Version, ".", "-", -1), s.Name, s.Environment))
-}
-
-func getExpirationTime(ttl uint32) time.Time {
-	return time.Now().Add(time.Duration(ttl) * time.Second)
 }

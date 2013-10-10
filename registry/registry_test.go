@@ -3,6 +3,7 @@ package registry
 import (
 	"github.com/skynetservices/skydns/msg"
 	"testing"
+	"time"
 )
 
 /* TODO:
@@ -222,9 +223,9 @@ func TestUpdateTTL(t *testing.T) {
 		}
 	}
 
-	origExpire := r.nodes[services[0].UUID].expires
+	origExpire := r.nodes[services[0].UUID].value.Expires
 
-	if err := reg.UpdateTTL(services[0].UUID, 10); err != nil {
+	if err := reg.UpdateTTL(services[0].UUID, 10, getExpirationTime(10)); err != nil {
 		t.Fatal("Failed to update TTL", err)
 	}
 
@@ -243,7 +244,7 @@ func TestUpdateTTL(t *testing.T) {
 		t.Fatal("TTL was not updated", results[0].TTL)
 	}
 
-	if r.nodes[services[0].UUID].expires.Unix() <= origExpire.Unix() {
+	if r.nodes[services[0].UUID].value.Expires.Unix() <= origExpire.Unix() {
 		t.Fatal("Service expiration not updated")
 	}
 }
@@ -260,6 +261,7 @@ func TestGetExpired(t *testing.T) {
 		Environment: "Production",
 		Port:        9000,
 		TTL:         500,
+		Expires:     getExpirationTime(500), // This is populated by HTTP handler so we need to set it ourselves
 	}
 
 	sExpired := msg.Service{
@@ -271,6 +273,7 @@ func TestGetExpired(t *testing.T) {
 		Environment: "Production",
 		Port:        9000,
 		TTL:         0,
+		Expires:     time.Now(),
 	}
 
 	reg.Add(s)
@@ -285,4 +288,8 @@ func TestGetExpired(t *testing.T) {
 	if expired[0] != "124" {
 		t.Fatal("Incorrect UUID returned for expired entry")
 	}
+}
+
+func getExpirationTime(ttl uint32) time.Time {
+	return time.Now().Add(time.Duration(ttl) * time.Second)
 }

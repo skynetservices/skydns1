@@ -225,6 +225,7 @@ func TestGetService(t *testing.T) {
 		Environment: "Production",
 		Port:        9000,
 		TTL:         4,
+		Expires:     getExpirationTime(4),
 	}
 
 	s.registry.Add(m)
@@ -238,12 +239,18 @@ func TestGetService(t *testing.T) {
 		t.Fatal("Failed to retrieve service")
 	}
 
+	m.TTL = 3 // TTL will be lower as time has passed
+	expected, err := json.Marshal(m)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// Newline is expected
-	expected := []byte(`{"UUID":"123","Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"localhost","Port":9000,"TTL":3}
-`)
+	expected = append(expected, []byte("\n")...)
 
 	if !bytes.Equal(resp.Body.Bytes(), expected) {
-		t.Fatal("Returned service is invalid")
+		t.Fatalf("Returned service is invalid. Expected %q but received %q", string(expected), resp.Body.String())
 	}
 }
 
@@ -257,6 +264,7 @@ var services = []msg.Service{
 		Environment: "Development",
 		Port:        9000,
 		TTL:         30,
+		Expires:     getExpirationTime(30),
 	},
 	msg.Service{
 		UUID:        "101",
@@ -267,6 +275,7 @@ var services = []msg.Service{
 		Environment: "Production",
 		Port:        9001,
 		TTL:         31,
+		Expires:     getExpirationTime(31),
 	},
 	msg.Service{
 		UUID:        "102",
@@ -277,6 +286,7 @@ var services = []msg.Service{
 		Environment: "Production",
 		Port:        9002,
 		TTL:         32,
+		Expires:     getExpirationTime(32),
 	},
 	msg.Service{
 		UUID:        "103",
@@ -287,6 +297,7 @@ var services = []msg.Service{
 		Environment: "Development",
 		Port:        9003,
 		TTL:         33,
+		Expires:     getExpirationTime(33),
 	},
 	msg.Service{
 		UUID:        "104",
@@ -297,6 +308,7 @@ var services = []msg.Service{
 		Environment: "Production",
 		Port:        9004,
 		TTL:         34,
+		Expires:     getExpirationTime(34),
 	},
 	msg.Service{
 		UUID:        "105",
@@ -307,6 +319,7 @@ var services = []msg.Service{
 		Environment: "Production",
 		Port:        9005,
 		TTL:         35,
+		Expires:     getExpirationTime(35),
 	},
 	msg.Service{
 		UUID:        "106",
@@ -317,6 +330,7 @@ var services = []msg.Service{
 		Environment: "Production",
 		Port:        9006,
 		TTL:         36,
+		Expires:     getExpirationTime(36),
 	},
 }
 
