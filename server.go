@@ -11,6 +11,7 @@ import (
 	"github.com/skynetservices/skydns/registry"
 	"log"
 	"math"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -94,17 +95,13 @@ func NewServer(leader string, host string, dnsPort int, httpPort int, dataDir st
 	return
 }
 
-// Returns IP:Port of DNS Server
-func (s *Server) DNSAddr() string {
-	return s.host + ":" + strconv.Itoa(s.dnsPort)
-}
+// Returns IP:Port of DNS Server.
+func (s *Server) DNSAddr() string { return net.JoinHostPort(s.host, strconv.Itoa(s.dnsPort)) }
 
-// Returns IP:Port of HTTP Server
-func (s *Server) HTTPAddr() string {
-	return s.host + ":" + strconv.Itoa(s.httpPort)
-}
+// Returns IP:Port of HTTP Server.
+func (s *Server) HTTPAddr() string { return net.JoinHostPort(s.host, strconv.Itoa(s.httpPort)) }
 
-// Starts DNS server and blocks waiting to be killed
+// Starts DNS server and blocks waiting to be killed.
 func (s *Server) Start() *sync.WaitGroup {
 	var err error
 	log.Printf("Initializing Raft Server: %s", s.dataDir)
@@ -211,7 +208,6 @@ run:
 			break run
 		}
 	}
-
 	s.Stop()
 }
 
@@ -228,9 +224,7 @@ func (s *Server) Join(leader string) error {
 	if err != nil {
 		return err
 	}
-
 	resp.Body.Close()
-
 	return nil
 }
 
@@ -263,12 +257,11 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 
 	defer w.WriteMsg(m)
 
-	if len(req.Question) < 1 {
-		return
-	}
-
+	// happens in dns lib when using default mux \o/
+//	if len(req.Question) < 1 {
+//		return
+//	}
 	q := req.Question[0]
-
 	var weight uint16
 
 	if q.Qtype == dns.TypeANY || q.Qtype == dns.TypeSRV {
@@ -276,14 +269,14 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		services, err := s.registry.Get(q.Name)
 
 		if err != nil {
+			m.SetRcode(req, dns.RcodeServerFailure)
 			log.Println("Error: ", err)
 			return
 		}
 
+		weight = 0
 		if len(services) > 0 {
 			weight = uint16(math.Floor(float64(100 / len(services))))
-		} else {
-			weight = 0
 		}
 
 		for _, serv := range services {
@@ -303,24 +296,22 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 			additionalServices, err := s.registry.Get(strings.Join(labels, "."))
 
 			if err != nil {
+				m.SetRcode(req, dns.RcodeServerFailure)
 				log.Println("Error: ", err)
 				return
-			} else {
-				if len(additionalServices) > 0 {
-					weight = uint16(math.Floor(float64(100 / (len(additionalServices) - len(services)))))
-				} else {
-					weight = 0
-				}
+			}
+			weight = 0
+			if len(additionalServices) > 0 {
+				weight = uint16(math.Floor(float64(100 / (len(additionalServices) - len(services)))))
+			}
 
-				for _, serv := range additionalServices {
-					// Exclude entries we already have
-					if strings.ToLower(serv.Region) == region {
-						continue
-					}
-
-					// TODO: Dynamically set priority and weight
-					m.Answer = append(m.Answer, &dns.SRV{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeSRV, Class: dns.ClassINET, Ttl: serv.TTL}, Priority: 20, Weight: weight, Port: serv.Port, Target: serv.Host + "."})
+			for _, serv := range additionalServices {
+				// Exclude entries we already have
+				if strings.ToLower(serv.Region) == region {
+					continue
 				}
+				// TODO: Dynamically set priority and weight
+				m.Answer = append(m.Answer, &dns.SRV{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeSRV, Class: dns.ClassINET, Ttl: serv.TTL}, Priority: 20, Weight: weight, Port: serv.Port, Target: serv.Host + "."})
 			}
 		}
 	}
