@@ -302,10 +302,11 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 			}
 
 			weight = 0
-			if len(additionalServices) > len(services) {
-				weight = uint16(math.Floor(float64(100 / (len(additionalServices) - len(services)))))
+			if len(additionalServices) <= len(services) {
+				return
 			}
 
+			weight = uint16(math.Floor(float64(100 / (len(additionalServices) - len(services)))))
 			for _, serv := range additionalServices {
 				// Exclude entries we already have
 				if strings.ToLower(serv.Region) == region {
