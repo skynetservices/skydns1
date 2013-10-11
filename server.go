@@ -249,7 +249,7 @@ func (s *Server) joinHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if _, err := s.raftServer.Do(command); err != nil {
-		log.Println("Error procssing join:", err)
+		log.Println("Error processing join:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -373,6 +373,7 @@ func (s *Server) addServiceHTTPHandler(w http.ResponseWriter, req *http.Request)
 			if s.raftServer.Leader() != "" {
 				http.Redirect(w, req, "http://"+s.raftServer.Leader()+req.URL.Path, http.StatusMovedPermanently)
 			} else {
+				log.Println("Error: Leader Unknown")
 				http.Error(w, "Leader unknown", http.StatusInternalServerError)
 			}
 		default:
@@ -406,6 +407,7 @@ func (s *Server) removeServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 			if s.raftServer.Leader() != "" {
 				http.Redirect(w, req, "http://"+s.raftServer.Leader()+req.URL.Path, http.StatusMovedPermanently)
 			} else {
+				log.Println("Error: Leader Unknown")
 				http.Error(w, "Leader unknown", http.StatusInternalServerError)
 			}
 		default:
@@ -440,6 +442,7 @@ func (s *Server) updateServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 			if s.raftServer.Leader() != "" {
 				http.Redirect(w, req, "http://"+s.raftServer.Leader()+req.URL.Path, http.StatusMovedPermanently)
 			} else {
+				log.Println("Error: Leader Unknown")
 				http.Error(w, "Leader unknown", http.StatusInternalServerError)
 			}
 		default:
@@ -470,6 +473,7 @@ func (s *Server) getServiceHTTPHandler(w http.ResponseWriter, req *http.Request)
 		case registry.ErrNotExists:
 			http.Error(w, err.Error(), http.StatusNotFound)
 		default:
+			log.Println("Error: ", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
