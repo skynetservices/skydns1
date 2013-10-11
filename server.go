@@ -257,15 +257,10 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 
 	defer w.WriteMsg(m)
 
-	if len(req.Question) < 1 {
-		return
-	}
-	if len(req.Question) != 1 {
-		m.SetRcodeFormatError(req)
-		log.Printf("Error: Malformed DNS Request from %q", w.RemoteAddr())
-		return
-	}
-
+	// happens in dns lib when using default mux \o/
+//	if len(req.Question) < 1 {
+//		return
+//	}
 	q := req.Question[0]
 	var weight uint16
 
