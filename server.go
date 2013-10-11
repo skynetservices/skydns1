@@ -258,9 +258,9 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	defer w.WriteMsg(m)
 
 	// happens in dns lib when using default mux \o/
-//	if len(req.Question) < 1 {
-//		return
-//	}
+	//	if len(req.Question) < 1 {
+	//		return
+	//	}
 	q := req.Question[0]
 	var weight uint16
 
@@ -300,8 +300,9 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 				log.Println("Error: ", err)
 				return
 			}
+
 			weight = 0
-			if len(additionalServices) > 0 {
+			if len(additionalServices) > len(services) {
 				weight = uint16(math.Floor(float64(100 / (len(additionalServices) - len(services)))))
 			}
 
