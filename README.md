@@ -1,7 +1,7 @@
 #SkyDNS
 *Version 0.1.0*
 
-SkyDNS is a distributed service for announcement and discovery of services. It leverages Raft for high-availability and consensus, and utilizes DNS for queries to discover available services, leveraging SRV records in DNS, with special meaning given to subdomains, priorities and weights.
+SkyDNS is a distributed service for announcement and discovery of services. It leverages Raft for high-availability and consensus, and utilizes DNS for queries to discover available services. This is done by leveraging SRV records in DNS, with special meaning given to subdomains, priorities and weights.
 
 ##Setup / Install
 
@@ -13,54 +13,53 @@ Which takes the following flags
 
 - -hport - This is the HTTP port to listen on for API request (Defaults to: 8080)
 - -dport - This is the port to listen on for DNS requests (Defaults to: 53)
-- -data - Directory that Raft logs will be store in (Defaults to: ./data)
+- -data - Directory that Raft logs will be stored in (Defaults to: ./data)
 - -leader - When running a cluster of SkyDNS servers as recommended, you'll need to supply followers with the where the leader can be found
 
 ##API
 ### Service Announcements
-You announce your service by submitting JSON over an HTTP POST to SkyDNS with information about your service.
+You announce your service by submitting JSON over HTTP to SkyDNS with information about your service.
 
 `curl -X POST -L http://localhost:8080/skydns/services -d '{"UUID":"1001","Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"web1.site.com","Port":9000,"TTL":10}'`
 
 If successful you should receive an http status code of: **201 Created**
 
-If a service with this UUID already exists you will receive back http status code: **409 Conflict**
+If a service with this UUID already exists you will receive back an http status code of: **409 Conflict**
 
-
-SkyDNS will now have an entry for your service that will live for 10 seconds, unless you send a  heartbeat to update the TTL.
+SkyDNS will now have an entry for your service that will live for the number of seconds supplied in your TTL (10 seconds in our example), unless you send a  heartbeat to update the TTL.
 
 ### Heartbeat / Keep alive
 SkyDNS requires that services submit an HTTP request to update their TTL within the TTL they last supplied. If the service fails to do so within this timeframe SkyDNS will expire the service automatically. This will allow for nodes to fail and DNS to reflect this quickly.
 
-You can update your TTL by sending an HTTP PUT request to SkyDNS with an updated TTL, it can be the same as before to allow it to live for another 10s, or it can be adjusted to a shorter or longer duration.
+You can update your TTL by sending an HTTP request to SkyDNS with an updated TTL, it can be the same as before to allow it to live for another 10s, or it can be adjusted to a shorter or longer duration.
 
 `curl -X PUT -L http://localhost:8080/skydns/services/1001 -d '{"TTL":10}'`
 
 ### Service Removal
-If you wish to remove your service from SkyDNS for any reason without waiting for the TTL to expire, you simply post an HTTP DELETE.
+If you wish to remove your service from SkyDNS for any reason without waiting for the TTL to expire, you simply send an HTTP DELETE.
 
 `curl -X DELETE -L http://localhost:8080/skydns/services/1001`
 
 ### Retrieve Service Info via API
-Currently you may only retrieve a service's info by UUID of the service, in the future we implement querying of the services similar to the DNS  interface.
+Currently you may only retrieve a service's info by UUID of the service, in the future we may implement querying of the services similar to the DNS  interface.
 
 `curl -X GET -L http://localhost:8080/skydns/services/1001`
 
 ##Discovery (DNS)
 You can find services by querying SkyDNS via any DNS client or utility. It uses a known domain syntax with wildcards to find matching services.
 
-Priorities and Weights are based on the requested Region, as well as  how many nodes are available matching the current request in the given region.
+Priorities and Weights are based on the requested Region, as well as how many nodes are available matching the current request in the given region.
 
 ###Domain Format
-The domain syntax when querying follows a pattern where the right most positions are more generic, than the subdomains: *uuid.host.region.version.service.environment*. This allows for you to supply only the positions you care about:
+The domain syntax when querying follows a pattern where the right most positions are more generic, than the subdomains to their left: *uuid.host.region.version.service.environment*. This allows for you to supply only the positions you care about:
 
-- authservice.prod - For instance would all services with the name AuthService in the production environment, regardless of the Version, Region, or Host
-- 1-0-0.authservice.prod - Is the same as above but restricting it to only version 1.0.0
-- east.1-0-0.authservice.prod - Would add the restricition that the services must be running in the East region
+- authservice.prouction - For instance would return all services with the name AuthService in the production environment, regardless of the Version, Region, or Host
+- 1-0-0.authservice.production - Is the same as above but restricting it to only version 1.0.0
+- east.1-0-0.authservice.production - Would add the restriction that the services must be running in the East region
 
 In addition to only needing to specify as much of the domain as required for the granularity level you're looking for, you may also supply the wildcard **any** or **all** in any of the positions.
 
-- east.any.any.prod - Would return all services in the East region, that are a part of the production environment.
+- east.any.any.production - Would return all services in the East region, that are a part of the production environment.
 
 ###Examples
 
@@ -78,7 +77,7 @@ Let's take a look at some results. First we need to add a few services so we hav
 	// Service 1004 (West Region)
 	curl -X POST -H "Content-type: application/json" -L http://localhost:8080/skydns/services -d '{"UUID":"1004","Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"West","Host":"web4.site.com","Port":80,"TTL":4000}'
 
-Now we can try some of our example DNS lookups
+Now we can try some of our example DNS lookups:
 #####All services in the Production Environment
 `dig @localhost production SRV`
 
@@ -136,7 +135,7 @@ Now we can try some of our example DNS lookups
 #####All TestService Instances at any version, within the East region
 `dig @localhost east.any.testservice.production SRV`
 
-This is where we've changed things up a bit, notice we used the "any" wildcard for version so we get any version, and because we've supplied an explicit region that we're looking for we get that as the highest DNS priority, with the weight being distributed evenly, then all of our West instances still show up for fail-over, but with a higher Priority
+This is where we've changed things up a bit, notice we used the "any" wildcard for version so we get any version, and because we've supplied an explicit region that we're looking for we get that as the highest DNS priority, with the weight being distributed evenly, then all of our West instances still show up for fail-over, but with a higher Priority.
 
 	;; QUESTION SECTION:
 	;east.any.testservice.production. IN	SRV
@@ -154,11 +153,36 @@ This is where we've changed things up a bit, notice we used the "any" wildcard f
 	;; MSG SIZE  rcvd: 364
 
 ##Roadmap
-As awesome as SkyDNS is in it's current state we plan to to further development with the following.
+As awesome as SkyDNS is in its current state we plan to further development with the following.
 
-* Handle Priorities for explicitly supplied hosts/uuids. This brings up an interesting question, if you supply a host or region should it only return exact matches, or should it work similar to regions where your supplied value gets a higher priority than others.
+* Handle Priorities for explicitly supplied hosts/uuids. This brings up an interesting question, if you supply a host or uuid should it only return exact matches, or should it work similar to regions where your supplied value gets a higher priority than others.
 * More comprehensive test suite
 * Validation of services
 * Benchmarks / Performance Improvements
 * Priorities based on latency between the requested region, and the additional external regions, as well as load in the given regions
 * Weights based on system load/memory availability on the given host, so that idle nodes recieve a higher weight and therefore a larger percentage of the requests.
+* Semantic version lookups (1.0 - returns any 1.0.x, 1.1.0 - Explicit 1.0.0, 1 - returns any 1.x.x), possibly priorities based on versions?
+* Support for peers that don't participate in consensus
+
+## License
+The MIT License (MIT)
+
+Copyright © 2013 Erik St. Martin, Brian Ketelsen
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
