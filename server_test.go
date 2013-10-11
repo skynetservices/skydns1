@@ -24,7 +24,6 @@ func TestAddService(t *testing.T) {
 	defer s.Stop()
 
 	m := msg.Service{
-		UUID:        "123",
 		Name:        "TestService",
 		Version:     "1.0.0",
 		Region:      "Test",
@@ -40,7 +39,7 @@ func TestAddService(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	req, _ := http.NewRequest("POST", "/skydns/services", bytes.NewBuffer(b))
+	req, _ := http.NewRequest("PUT", "/skydns/services/123", bytes.NewBuffer(b))
 	resp := httptest.NewRecorder()
 
 	s.router.ServeHTTP(resp, req)
@@ -55,7 +54,6 @@ func TestAddServiceDuplicate(t *testing.T) {
 	defer s.Stop()
 
 	m := msg.Service{
-		UUID:        "123",
 		Name:        "TestService",
 		Version:     "1.0.0",
 		Region:      "Test",
@@ -71,7 +69,7 @@ func TestAddServiceDuplicate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	req, _ := http.NewRequest("POST", "/skydns/services", bytes.NewBuffer(b))
+	req, _ := http.NewRequest("PUT", "/skydns/services/123", bytes.NewBuffer(b))
 	resp := httptest.NewRecorder()
 
 	s.router.ServeHTTP(resp, req)
@@ -80,7 +78,7 @@ func TestAddServiceDuplicate(t *testing.T) {
 		t.Fatal("Failed to add service")
 	}
 
-	req, _ = http.NewRequest("POST", "/skydns/services", bytes.NewBuffer(b))
+	req, _ = http.NewRequest("PUT", "/skydns/services/123", bytes.NewBuffer(b))
 	resp = httptest.NewRecorder()
 	s.router.ServeHTTP(resp, req)
 
@@ -167,7 +165,7 @@ func TestUpdateTTL(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	req, _ := http.NewRequest("PUT", "/skydns/services/"+m.UUID, bytes.NewBuffer(b))
+	req, _ := http.NewRequest("PATCH", "/skydns/services/"+m.UUID, bytes.NewBuffer(b))
 	resp := httptest.NewRecorder()
 
 	s.router.ServeHTTP(resp, req)
@@ -202,7 +200,7 @@ func TestUpdateTTLUnknownService(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	req, _ := http.NewRequest("PUT", "/skydns/services/"+m.UUID, bytes.NewBuffer(b))
+	req, _ := http.NewRequest("PATCH", "/skydns/services/"+m.UUID, bytes.NewBuffer(b))
 	resp := httptest.NewRecorder()
 
 	s.router.ServeHTTP(resp, req)

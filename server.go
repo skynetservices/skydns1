@@ -83,10 +83,10 @@ func NewServer(leader string, host string, dnsPort int, httpPort int, dataDir st
 	s.dnsHandler.Handle(".", s)
 
 	// API Routes
-	s.router.HandleFunc("/skydns/services", s.addServiceHTTPHandler).Methods("POST")
+	s.router.HandleFunc("/skydns/services/{uuid}", s.addServiceHTTPHandler).Methods("PUT")
 	s.router.HandleFunc("/skydns/services/{uuid}", s.getServiceHTTPHandler).Methods("GET")
 	s.router.HandleFunc("/skydns/services/{uuid}", s.removeServiceHTTPHandler).Methods("DELETE")
-	s.router.HandleFunc("/skydns/services/{uuid}", s.updateServiceHTTPHandler).Methods("PUT")
+	s.router.HandleFunc("/skydns/services/{uuid}", s.updateServiceHTTPHandler).Methods("PATCH")
 
 	// Raft Routes
 	s.router.HandleFunc("/raft/join", s.joinHandler).Methods("POST")
@@ -357,6 +357,15 @@ func (s *Server) listenAndServe() {
 
 // Handle API add service requests
 func (s *Server) addServiceHTTPHandler(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+
+	var uuid string
+	var ok bool
+	if uuid, ok = vars["uuid"]; !ok {
+		http.Error(w, "UUID required", http.StatusBadRequest)
+		return
+	}
+
 	var serv msg.Service
 
 	if err := json.NewDecoder(req.Body).Decode(&serv); err != nil {
@@ -364,6 +373,8 @@ func (s *Server) addServiceHTTPHandler(w http.ResponseWriter, req *http.Request)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	serv.UUID = uuid
 
 	if _, err := s.raftServer.Do(NewAddServiceCommand(serv)); err != nil {
 		switch err {

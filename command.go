@@ -15,9 +15,7 @@ type AddServiceCommand struct {
 
 // Creates a new AddServiceCommand
 func NewAddServiceCommand(s msg.Service) *AddServiceCommand {
-	log.Println(s)
 	s.Expires = getExpirationTime(s.TTL)
-	log.Println(s)
 
 	return &AddServiceCommand{s}
 }
@@ -29,10 +27,12 @@ func (c *AddServiceCommand) CommandName() string {
 
 // Adds service to registry
 func (c *AddServiceCommand) Apply(server *raft.Server) (interface{}, error) {
-	log.Println("Adding Service:", c.Service)
-
 	reg := server.Context().(registry.Registry)
 	err := reg.Add(c.Service)
+
+	if err == nil {
+		log.Println("Added Service:", c.Service)
+	}
 
 	return c.Service, err
 }
@@ -55,10 +55,12 @@ func (c *UpdateTTLCommand) CommandName() string {
 
 // Updates TTL in registry
 func (c *UpdateTTLCommand) Apply(server *raft.Server) (interface{}, error) {
-	log.Println("Updating Service:", c.UUID)
-
 	reg := server.Context().(registry.Registry)
 	err := reg.UpdateTTL(c.UUID, c.TTL, c.Expires)
+
+	if err == nil {
+		log.Println("Updated Service TTL:", c.UUID, c.TTL)
+	}
 
 	return c.UUID, err
 }
@@ -79,10 +81,13 @@ func (c *RemoveServiceCommand) CommandName() string {
 
 // Updates TTL in registry
 func (c *RemoveServiceCommand) Apply(server *raft.Server) (interface{}, error) {
-	log.Println("Removing Service:", c.UUID)
 
 	reg := server.Context().(registry.Registry)
 	err := reg.RemoveUUID(c.UUID)
+
+	if err == nil {
+		log.Println("Removed Service:", c.UUID)
+	}
 
 	return c.UUID, err
 }

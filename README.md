@@ -22,7 +22,7 @@ Which takes the following flags
 ### Service Announcements
 You announce your service by submitting JSON over HTTP to SkyDNS with information about your service.
 
-`curl -X POST -L http://localhost:8080/skydns/services -d '{"UUID":"1001","Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"web1.site.com","Port":9000,"TTL":10}'`
+`curl -X PUT -L http://localhost:8080/skydns/services/1001 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"web1.site.com","Port":9000,"TTL":10}'`
 
 If successful you should receive an http status code of: **201 Created**
 
@@ -35,7 +35,7 @@ SkyDNS requires that services submit an HTTP request to update their TTL within 
 
 You can update your TTL by sending an HTTP request to SkyDNS with an updated TTL, it can be the same as before to allow it to live for another 10s, or it can be adjusted to a shorter or longer duration.
 
-`curl -X PUT -L http://localhost:8080/skydns/services/1001 -d '{"TTL":10}'`
+`curl -X PATCH -L http://localhost:8080/skydns/services/1001 -d '{"TTL":10}'`
 
 ### Service Removal
 If you wish to remove your service from SkyDNS for any reason without waiting for the TTL to expire, you simply send an HTTP DELETE.
@@ -68,16 +68,16 @@ In addition to only needing to specify as much of the domain as required for the
 Let's take a look at some results. First we need to add a few services so we have services to query against.
 
 	// Service 1001 (East Region)
-	curl -X POST -L http://localhost:8080/skydns/services -d '{"UUID":"1001","Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"East","Host":"web1.site.com","Port":80,"TTL":4000}'
+	curl -X PUT -L http://localhost:8080/skydns/services/1001 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"East","Host":"web1.site.com","Port":80,"TTL":4000}'
 	
 	// Service 1002 (East Region)
-	curl -X POST -L http://localhost:8080/skydns/services -d '{"UUID":"1002","Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"East","Host":"web2.site.com","Port":8080,"TTL":4000}'
+	curl -X PUT -L http://localhost:8080/skydns/services/1002 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"East","Host":"web2.site.com","Port":8080,"TTL":4000}'
 	
 	// Service 1003 (West Region)
-	curl -X POST -L http://localhost:8080/skydns/services -d '{"UUID":"1003","Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"West","Host":"web3.site.com","Port":80,"TTL":4000}'
+	curl -X PUT -L http://localhost:8080/skydns/services/1003 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"West","Host":"web3.site.com","Port":80,"TTL":4000}'
 	
 	// Service 1004 (West Region)
-	curl -X POST -H "Content-type: application/json" -L http://localhost:8080/skydns/services -d '{"UUID":"1004","Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"West","Host":"web4.site.com","Port":80,"TTL":4000}'
+	curl -X PUT -L http://localhost:8080/skydns/services/1004 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"West","Host":"web4.site.com","Port":80,"TTL":4000}'
 
 Now we can try some of our example DNS lookups:
 #####All services in the Production Environment
