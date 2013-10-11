@@ -6,9 +6,11 @@ import (
 	"github.com/miekg/dns"
 	"github.com/skynetservices/skydns/msg"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -484,7 +486,7 @@ func newTestServer(leader string, dnsPort int, httpPort int) *Server {
 		panic(err.Error())
 	}
 
-	server := NewServer(leader, "localhost", dnsPort, httpPort, p, 1*time.Second, 1*time.Second)
+	server := NewServer(leader, net.JoinHostPort("localhost", strconv.Itoa(dnsPort)), net.JoinHostPort("localhost", strconv.Itoa(httpPort)), p, 1*time.Second, 1*time.Second)
 	server.Start()
 
 	return server

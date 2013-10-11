@@ -11,11 +11,9 @@ import (
 	"github.com/skynetservices/skydns/registry"
 	"log"
 	"math"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -39,9 +37,8 @@ func init() {
 
 type Server struct {
 	leader       string
-	host         string
-	dnsPort      int
-	httpPort     int
+	dnsAddr      string
+	httpAddr     string
 	readTimeout  time.Duration
 	writeTimeout time.Duration
 	waiter       *sync.WaitGroup
@@ -60,12 +57,11 @@ type Server struct {
 }
 
 // Create a new Server
-func NewServer(leader string, host string, dnsPort int, httpPort int, dataDir string, rt, wt time.Duration) (s *Server) {
+func NewServer(leader string, dnsAddr string, httpAddr string, dataDir string, rt, wt time.Duration) (s *Server) {
 	s = &Server{
 		leader:       leader,
-		host:         host,
-		dnsPort:      dnsPort,
-		httpPort:     httpPort,
+		dnsAddr:      dnsAddr,
+		httpAddr:     httpAddr,
 		readTimeout:  rt,
 		writeTimeout: wt,
 		router:       mux.NewRouter(),
@@ -96,10 +92,10 @@ func NewServer(leader string, host string, dnsPort int, httpPort int, dataDir st
 }
 
 // Returns IP:Port of DNS Server.
-func (s *Server) DNSAddr() string { return net.JoinHostPort(s.host, strconv.Itoa(s.dnsPort)) }
+func (s *Server) DNSAddr() string { return s.dnsAddr }
 
 // Returns IP:Port of HTTP Server.
-func (s *Server) HTTPAddr() string { return net.JoinHostPort(s.host, strconv.Itoa(s.httpPort)) }
+func (s *Server) HTTPAddr() string { return s.httpAddr }
 
 // Starts DNS server and blocks waiting to be killed.
 func (s *Server) Start() *sync.WaitGroup {
@@ -321,7 +317,7 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 
 // Returns the connection string.
 func (s *Server) connectionString() string {
-	return fmt.Sprintf("http://%s:%d", s.host, s.httpPort)
+	return fmt.Sprintf("http://%s", s.httpAddr)
 }
 
 // Binds to DNS and HTTP ports and starts accepting connections
