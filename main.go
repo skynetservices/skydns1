@@ -18,8 +18,8 @@ func init() {
 	flag.StringVar(&leader, "leader", "", "SkyDNS Leader")
 	flag.StringVar(&host, "host", "127.0.0.1", "SkyDNS bind ip")
 	flag.StringVar(&dataDir, "data", "./data", "SkyDNS data directory")
-	flag.DurationVar(&rtimeout, "rtimeout", 1*time.Second, "Read timeout")
-	flag.DurationVar(&wtimeout, "wtimeout", 1*time.Second, "Write timeout")
+	flag.DurationVar(&rtimeout, "rtimeout", 2*time.Second, "Read timeout")
+	flag.DurationVar(&wtimeout, "wtimeout", 2*time.Second, "Write timeout")
 }
 
 func main() {
