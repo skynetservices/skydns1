@@ -43,7 +43,7 @@ type UpdateTTLCommand struct {
 	Expires time.Time
 }
 
-// Creates a new UpdateTTLCommand
+// NetUpdateTTLCommands returns a new UpdateTTLCommand
 func NewUpdateTTLCommand(uuid string, ttl uint32) *UpdateTTLCommand {
 	return &UpdateTTLCommand{uuid, ttl, getExpirationTime(ttl)}
 }
