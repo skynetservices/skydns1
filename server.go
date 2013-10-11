@@ -37,6 +37,7 @@ func init() {
 
 type Server struct {
 	leader       string
+	domain       string
 	dnsAddr      string
 	httpAddr     string
 	readTimeout  time.Duration
@@ -57,8 +58,9 @@ type Server struct {
 }
 
 // Create a new Server
-func NewServer(leader string, dnsAddr string, httpAddr string, dataDir string, rt, wt time.Duration) (s *Server) {
+func NewServer(leader string, domain string, dnsAddr string, httpAddr string, dataDir string, rt, wt time.Duration) (s *Server) {
 	s = &Server{
+		domain:       domain,
 		leader:       leader,
 		dnsAddr:      dnsAddr,
 		httpAddr:     httpAddr,
@@ -262,7 +264,8 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 
 	if q.Qtype == dns.TypeANY || q.Qtype == dns.TypeSRV {
 		log.Printf("Received DNS Request for %q from %q", q.Name, w.RemoteAddr())
-		services, err := s.registry.Get(q.Name)
+		key := strings.TrimSuffix(q.Name, s.domain+".")
+		services, err := s.registry.Get(key)
 
 		if err != nil {
 			m.SetRcode(req, dns.RcodeServerFailure)
@@ -281,7 +284,7 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		}
 
 		// Append matching entries in different region than requested with a higher priority
-		labels := dns.SplitDomainName(q.Name)
+		labels := dns.SplitDomainName(key)
 
 		pos := len(labels) - 4
 		if len(labels) >= 4 && labels[pos] != "any" && labels[pos] != "all" {

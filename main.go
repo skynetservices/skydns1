@@ -7,12 +7,13 @@ import (
 )
 
 var (
-	leader, ldns, lhttp, dataDir string
-	rtimeout, wtimeout           time.Duration
+	leader, ldns, lhttp, dataDir, domain string
+	rtimeout, wtimeout                   time.Duration
 )
 
 func init() {
 	flag.StringVar(&leader, "leader", "", "SkyDNS Leader")
+	flag.StringVar(&domain, "domain", "skydns.local", "Domain to anchor requests to")
 	flag.StringVar(&ldns, "dns", "127.0.0.1:53", "IP:Port to bind to for DNS")
 	flag.StringVar(&ldns, "http", "127.0.0.1:8080", "IP:Port to bind to for HTTP")
 	flag.StringVar(&dataDir, "data", "./data", "SkyDNS data directory")
@@ -24,7 +25,7 @@ func main() {
 	raft.SetLogLevel(0)
 
 	flag.Parse()
-	s := NewServer(leader, ldns, lhttp, dataDir, rtimeout, wtimeout)
+	s := NewServer(leader, domain, ldns, lhttp, dataDir, rtimeout, wtimeout)
 
 	waiter := s.Start()
 	waiter.Wait()

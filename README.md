@@ -12,6 +12,7 @@ Compile SkyDNS, and execute it
 `./skydns`
 
 Which takes the following flags
+- -domain - This is the domain requests are anchored to and should be appended to all requests (Defaults to: skydns.local)
 - -http - This is the HTTP ip:port to listen on for API request (Defaults to: 127.0.0.1:8080)
 - -dns - This is the ip:port to listen on for DNS requests (Defaults to: 127.0.0.1:53)
 - -data - Directory that Raft logs will be stored in (Defaults to: ./data)
@@ -52,15 +53,15 @@ You can find services by querying SkyDNS via any DNS client or utility. It uses 
 Priorities and Weights are based on the requested Region, as well as how many nodes are available matching the current request in the given region.
 
 ###Domain Format
-The domain syntax when querying follows a pattern where the right most positions are more generic, than the subdomains to their left: *uuid.host.region.version.service.environment*. This allows for you to supply only the positions you care about:
+The domain syntax when querying follows a pattern where the right most positions are more generic, than the subdomains to their left: *\<uuid\>.\<host\>.\<region\>.\<version\>.\<service\>.\<environment\>.skydns.local*. This allows for you to supply only the positions you care about:
 
-- authservice.prouction - For instance would return all services with the name AuthService in the production environment, regardless of the Version, Region, or Host
-- 1-0-0.authservice.production - Is the same as above but restricting it to only version 1.0.0
-- east.1-0-0.authservice.production - Would add the restriction that the services must be running in the East region
+- authservice.production.skydns.local - For instance would return all services with the name AuthService in the production environment, regardless of the Version, Region, or Host
+- 1-0-0.authservice.production.skydns.local - Is the same as above but restricting it to only version 1.0.0
+- east.1-0-0.authservice.production.skydns.local - Would add the restriction that the services must be running in the East region
 
 In addition to only needing to specify as much of the domain as required for the granularity level you're looking for, you may also supply the wildcard **any** or **all** in any of the positions.
 
-- east.any.any.production - Would return all services in the East region, that are a part of the production environment.
+- east.any.any.production.skydns.local - Would return all services in the East region, that are a part of the production environment.
 
 ###Examples
 
@@ -80,17 +81,17 @@ Let's take a look at some results. First we need to add a few services so we hav
 
 Now we can try some of our example DNS lookups:
 #####All services in the Production Environment
-`dig @localhost production SRV`
+`dig @localhost production.skydns.local SRV`
 
 	;; QUESTION SECTION:
-	;production.			IN	SRV
+	;production.skydns.local.			IN	SRV
 
 	;; ANSWER SECTION:
-	production.		629		IN	SRV	10 20 80   web1.site.com.
-	production.		3979	IN	SRV	10 20 8080 web2.site.com.
-	production.		3629	IN	SRV	10 20 9000 server24.
-	production.		3985	IN	SRV	10 20 80   web3.site.com.
-	production.		3990	IN	SRV	10 20 80   web4.site.com.
+	production.skydns.local.		629		IN	SRV	10 20 80   web1.site.com.
+	production.skydns.local.		3979	IN	SRV	10 20 8080 web2.site.com.
+	production.skydns.local.		3629	IN	SRV	10 20 9000 server24.
+	production.skydns.local.		3985	IN	SRV	10 20 80   web3.site.com.
+	production.skydns.local.		3990	IN	SRV	10 20 80   web4.site.com.
 
 	;; Query time: 1 msec
 	;; SERVER: 127.0.0.1#53(127.0.0.1)
@@ -98,17 +99,17 @@ Now we can try some of our example DNS lookups:
 	;; MSG SIZE  rcvd: 238
 	
 #####All TestService instances in Production Environment
-`dig @localhost testservice.production SRV`
+`dig @localhost testservice.production.skydns.local SRV`
 
 	;; QUESTION SECTION:
-	;testservice.production.		IN	SRV
+	;testservice.production.skydns.local.		IN	SRV
 
 	;; ANSWER SECTION:
-	testservice.production.	615		IN	SRV	10 20 80   web1.site.com.
-	testservice.production.	3966	IN	SRV	10 20 8080 web2.site.com.
-	testservice.production.	3615	IN	SRV	10 20 9000 server24.
-	testservice.production.	3972	IN	SRV	10 20 80   web3.site.com.
-	testservice.production.	3976	IN	SRV	10 20 80   web4.site.com.
+	testservice.production.skydns.local.	615		IN	SRV	10 20 80   web1.site.com.
+	testservice.production.skydns.local.	3966	IN	SRV	10 20 8080 web2.site.com.
+	testservice.production.skydns.local.	3615	IN	SRV	10 20 9000 server24.
+	testservice.production.skydns.local.	3972	IN	SRV	10 20 80   web3.site.com.
+	testservice.production.skydns.local.	3976	IN	SRV	10 20 80   web4.site.com.
 
 	;; Query time: 0 msec
 	;; SERVER: 127.0.0.1#53(127.0.0.1)
@@ -116,17 +117,17 @@ Now we can try some of our example DNS lookups:
 	;; MSG SIZE  rcvd: 310
 	
 #####All TestService v1.0.0 Instances in Production Environment
-`dig @localhost 1-0-0.testservice.production SRV`
+`dig @localhost 1-0-0.testservice.production.skydns.local SRV`
 
 	;; QUESTION SECTION:
-	;1-0-0.testservice.production.	IN	SRV
+	;1-0-0.testservice.production.skydns.local.	IN	SRV
 
 	;; ANSWER SECTION:
-	1-0-0.testservice.production. 600  IN	SRV	10 20 80   web1.site.com.
-	1-0-0.testservice.production. 3950 IN	SRV	10 20 8080 web2.site.com.
-	1-0-0.testservice.production. 3600 IN	SRV	10 20 9000 server24.
-	1-0-0.testservice.production. 3956 IN	SRV	10 20 80   web3.site.com.
-	1-0-0.testservice.production. 3961 IN	SRV	10 20 80   web4.site.com.
+	1-0-0.testservice.production.skydns.local. 600  IN	SRV	10 20 80   web1.site.com.
+	1-0-0.testservice.production.skydns.local. 3950 IN	SRV	10 20 8080 web2.site.com.
+	1-0-0.testservice.production.skydns.local. 3600 IN	SRV	10 20 9000 server24.
+	1-0-0.testservice.production.skydns.local. 3956 IN	SRV	10 20 80   web3.site.com.
+	1-0-0.testservice.production.skydns.local. 3961 IN	SRV	10 20 80   web4.site.com.
 
 	;; Query time: 0 msec
 	;; SERVER: 127.0.0.1#53(127.0.0.1)
@@ -134,19 +135,19 @@ Now we can try some of our example DNS lookups:
 	;; MSG SIZE  rcvd: 346
 	
 #####All TestService Instances at any version, within the East region
-`dig @localhost east.any.testservice.production SRV`
+`dig @localhost east.any.testservice.production.skydns.local SRV`
 
 This is where we've changed things up a bit, notice we used the "any" wildcard for version so we get any version, and because we've supplied an explicit region that we're looking for we get that as the highest DNS priority, with the weight being distributed evenly, then all of our West instances still show up for fail-over, but with a higher Priority.
 
 	;; QUESTION SECTION:
-	;east.any.testservice.production. IN	SRV
+	;east.any.testservice.production.skydns.local. IN	SRV
 
 	;; ANSWER SECTION:
-	east.any.testservice.production. 531 IN  SRV	10 50 80   web1.site.com.
-	east.any.testservice.production. 3881 IN SRV	10 50 8080 web2.site.com.
-	east.any.testservice.production. 3531 IN SRV	20 33 9000 server24.
-	east.any.testservice.production. 3887 IN SRV	20 33 80   web3.site.com.
-	east.any.testservice.production. 3892 IN SRV	20 33 80   web4.site.com.
+	east.any.testservice.production.skydns.local. 531  IN SRV	10 50 80   web1.site.com.
+	east.any.testservice.production.skydns.local. 3881 IN SRV	10 50 8080 web2.site.com.
+	east.any.testservice.production.skydns.local. 3531 IN SRV	20 33 9000 server24.
+	east.any.testservice.production.skydns.local. 3887 IN SRV	20 33 80   web3.site.com.
+	east.any.testservice.production.skydns.local. 3892 IN SRV	20 33 80   web4.site.com.
 
 	;; Query time: 0 msec
 	;; SERVER: 127.0.0.1#53(127.0.0.1)

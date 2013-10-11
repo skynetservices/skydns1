@@ -342,11 +342,11 @@ type dnsTestCase struct {
 var dnsTestCases = []dnsTestCase{
 	// Generic Test
 	dnsTestCase{
-		Question: "testservice.production.",
+		Question: "testservice.production.skydns.local.",
 		Answer: []dns.SRV{
 			dns.SRV{
 				Hdr: dns.RR_Header{
-					Name:   "testservice.production.",
+					Name:   "testservice.production.skydns.local.",
 					Ttl:    30,
 					Rrtype: dns.TypeSRV,
 				},
@@ -357,7 +357,7 @@ var dnsTestCases = []dnsTestCase{
 			},
 			dns.SRV{
 				Hdr: dns.RR_Header{
-					Name:   "testservice.production.",
+					Name:   "testservice.production.skydns.local.",
 					Ttl:    33,
 					Rrtype: dns.TypeSRV,
 				},
@@ -368,7 +368,7 @@ var dnsTestCases = []dnsTestCase{
 			},
 			dns.SRV{
 				Hdr: dns.RR_Header{
-					Name:   "testservice.production.",
+					Name:   "testservice.production.skydns.local.",
 					Ttl:    34,
 					Rrtype: dns.TypeSRV,
 				},
@@ -382,11 +382,11 @@ var dnsTestCases = []dnsTestCase{
 
 	// Region Priority Test
 	dnsTestCase{
-		Question: "region1.any.testservice.production.",
+		Question: "region1.any.testservice.production.skydns.local.",
 		Answer: []dns.SRV{
 			dns.SRV{
 				Hdr: dns.RR_Header{
-					Name:   "region1.any.testservice.production.",
+					Name:   "region1.any.testservice.production.skydns.local.",
 					Ttl:    30,
 					Rrtype: dns.TypeSRV,
 				},
@@ -397,7 +397,7 @@ var dnsTestCases = []dnsTestCase{
 			},
 			dns.SRV{
 				Hdr: dns.RR_Header{
-					Name:   "region1.any.testservice.production.",
+					Name:   "region1.any.testservice.production.skydns.local.",
 					Ttl:    33,
 					Rrtype: dns.TypeSRV,
 				},
@@ -408,7 +408,7 @@ var dnsTestCases = []dnsTestCase{
 			},
 			dns.SRV{
 				Hdr: dns.RR_Header{
-					Name:   "region1.any.testservice.production.",
+					Name:   "region1.any.testservice.production.skydns.local.",
 					Ttl:    34,
 					Rrtype: dns.TypeSRV,
 				},
@@ -486,7 +486,7 @@ func newTestServer(leader string, dnsPort int, httpPort int) *Server {
 		panic(err.Error())
 	}
 
-	server := NewServer(leader, net.JoinHostPort("localhost", strconv.Itoa(dnsPort)), net.JoinHostPort("localhost", strconv.Itoa(httpPort)), p, 1*time.Second, 1*time.Second)
+	server := NewServer(leader, "skydns.local", net.JoinHostPort("localhost", strconv.Itoa(dnsPort)), net.JoinHostPort("localhost", strconv.Itoa(httpPort)), p, 1*time.Second, 1*time.Second)
 	server.Start()
 
 	return server
