@@ -240,10 +240,15 @@ func (s *Server) joinHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	if _, err := s.raftServer.Do(command); err != nil {
-		log.Println("Error processing join:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		switch err {
+		case raft.NotLeaderError:
+			s.redirectToLeader(w, req)
+		default:
+			log.Println("Error processing join:", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
 }
 
@@ -347,6 +352,15 @@ func (s *Server) listenAndServe() {
 	}()
 }
 
+func (s *Server) redirectToLeader(w http.ResponseWriter, req *http.Request) {
+	if s.raftServer.Leader() != "" {
+		http.Redirect(w, req, "http://"+s.raftServer.Leader()+req.URL.Path, http.StatusMovedPermanently)
+	} else {
+		log.Println("Error: Leader Unknown")
+		http.Error(w, "Leader unknown", http.StatusInternalServerError)
+	}
+}
+
 // Handle API add service requests
 func (s *Server) addServiceHTTPHandler(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
@@ -373,12 +387,7 @@ func (s *Server) addServiceHTTPHandler(w http.ResponseWriter, req *http.Request)
 		case registry.ErrExists:
 			http.Error(w, err.Error(), http.StatusConflict)
 		case raft.NotLeaderError:
-			if s.raftServer.Leader() != "" {
-				http.Redirect(w, req, "http://"+s.raftServer.Leader()+req.URL.Path, http.StatusMovedPermanently)
-			} else {
-				log.Println("Error: Leader Unknown")
-				http.Error(w, "Leader unknown", http.StatusInternalServerError)
-			}
+			s.redirectToLeader(w, req)
 		default:
 			log.Println("Error: ", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -407,12 +416,7 @@ func (s *Server) removeServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 		case registry.ErrNotExists:
 			http.Error(w, err.Error(), http.StatusNotFound)
 		case raft.NotLeaderError:
-			if s.raftServer.Leader() != "" {
-				http.Redirect(w, req, "http://"+s.raftServer.Leader()+req.URL.Path, http.StatusMovedPermanently)
-			} else {
-				log.Println("Error: Leader Unknown")
-				http.Error(w, "Leader unknown", http.StatusInternalServerError)
-			}
+			s.redirectToLeader(w, req)
 		default:
 			log.Println("Error: ", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -442,12 +446,7 @@ func (s *Server) updateServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 		case registry.ErrNotExists:
 			http.Error(w, err.Error(), http.StatusNotFound)
 		case raft.NotLeaderError:
-			if s.raftServer.Leader() != "" {
-				http.Redirect(w, req, "http://"+s.raftServer.Leader()+req.URL.Path, http.StatusMovedPermanently)
-			} else {
-				log.Println("Error: Leader Unknown")
-				http.Error(w, "Leader unknown", http.StatusInternalServerError)
-			}
+			s.redirectToLeader(w, req)
 		default:
 			log.Println("Error: ", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
