@@ -481,12 +481,18 @@ func TestDNS(t *testing.T) {
 }
 
 func newTestServer(leader string, dnsPort int, httpPort int) *Server {
+	members := make([]string, 0)
+
 	p, _ := ioutil.TempDir("", "skydns-test-")
 	if err := os.MkdirAll(p, 0644); err != nil {
 		panic(err.Error())
 	}
 
-	server := NewServer(leader, "skydns.local", net.JoinHostPort("localhost", strconv.Itoa(dnsPort)), net.JoinHostPort("localhost", strconv.Itoa(httpPort)), p, 1*time.Second, 1*time.Second)
+	if leader != "" {
+		members = append(members, leader)
+	}
+
+	server := NewServer(members, "skydns.local", net.JoinHostPort("localhost", strconv.Itoa(dnsPort)), net.JoinHostPort("localhost", strconv.Itoa(httpPort)), p, 1*time.Second, 1*time.Second)
 	server.Start()
 
 	return server
