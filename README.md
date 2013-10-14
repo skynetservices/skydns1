@@ -19,7 +19,7 @@ Which takes the following flags
 - -dns - This is the ip:port to listen on for DNS requests (Defaults to: 127.0.0.1:53)
 - -data - Directory that Raft logs will be stored in (Defaults to: ./data)
 - -join - When running a cluster of SkyDNS servers as recommended, you'll need to supply followers with where the other members can be found, this can be any member or a comma separated list of members. It does not have to be the leader. Any non-leader you join will redirect you to the leader automatically.
-- -discover - This flag can be used in place of explicitly supplying cluster members via the -join flag. It performs an DNS lookup using the hosts DNS server for NS records associated with the -domain flag to find the SkyDNS instances.
+- -discover - This flag can be used in place of explicitly supplying cluster members via the -join flag. It performs a DNS lookup using the hosts DNS server for NS records associated with the -domain flag to find the SkyDNS instances.
 
 ##API
 ### Service Announcements
