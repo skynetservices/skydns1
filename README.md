@@ -16,7 +16,7 @@ Which takes the following flags
 - -http - This is the HTTP ip:port to listen on for API request (Defaults to: 127.0.0.1:8080)
 - -dns - This is the ip:port to listen on for DNS requests (Defaults to: 127.0.0.1:53)
 - -data - Directory that Raft logs will be stored in (Defaults to: ./data)
-- -leader - When running a cluster of SkyDNS servers as recommended, you'll need to supply followers with the where the leader can be found
+- -join - When running a cluster of SkyDNS servers as recommended, you'll need to supply followers with the where the other members can be found, this can be any member or a comma separated list of members. It does not have to be the leader. Any non-leader you join will redirect you to the leader automatically.
 
 ##API
 ### Service Announcements

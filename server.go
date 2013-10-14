@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/goraft/raft"
 	"github.com/gorilla/mux"
@@ -12,6 +13,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -36,7 +38,7 @@ func init() {
 }
 
 type Server struct {
-	leader       string
+	join         string // initial member to join with
 	domain       string
 	dnsAddr      string
 	httpAddr     string
@@ -58,10 +60,10 @@ type Server struct {
 }
 
 // Create a new Server
-func NewServer(leader string, domain string, dnsAddr string, httpAddr string, dataDir string, rt, wt time.Duration) (s *Server) {
+func NewServer(join string, domain string, dnsAddr string, httpAddr string, dataDir string, rt, wt time.Duration) (s *Server) {
 	s = &Server{
+		join:         join,
 		domain:       domain,
-		leader:       leader,
 		dnsAddr:      dnsAddr,
 		httpAddr:     httpAddr,
 		readTimeout:  rt,
@@ -114,17 +116,17 @@ func (s *Server) Start() *sync.WaitGroup {
 	s.raftServer.Start()
 
 	// Join to leader if specified.
-	if s.leader != "" {
-		log.Println("Attempting to join leader:", s.leader)
+	if s.join != "" {
+		log.Println("Joining cluster:", s.join)
 
 		if !s.raftServer.IsLogEmpty() {
 			log.Fatal("Cannot join with an existing log")
 		}
-		if err := s.Join(s.leader); err != nil {
-			log.Fatal(err)
+		if err := s.Join(strings.Split(s.join, ",")); err != nil {
+			log.Fatal("Fatal: ", err)
 		}
 
-		log.Println("Joined leader:", s.leader)
+		log.Println("Joined cluster")
 
 		// Initialize the server by joining itself.
 	} else if s.raftServer.IsLogEmpty() {
@@ -210,7 +212,7 @@ run:
 }
 
 // Joins an existing skydns cluster
-func (s *Server) Join(leader string) error {
+func (s *Server) Join(members []string) error {
 	command := &raft.DefaultJoinCommand{
 		Name:             s.raftServer.Name(),
 		ConnectionString: s.connectionString(),
@@ -218,12 +220,25 @@ func (s *Server) Join(leader string) error {
 
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(command)
-	resp, err := http.Post(fmt.Sprintf("http://%s/raft/join", leader), "application/json", &b)
-	if err != nil {
-		return err
+
+	for _, m := range members {
+		log.Println("Attempting to connect to:", m)
+
+		resp, err := http.Post(fmt.Sprintf("http://%s/raft/join", strings.TrimSpace(m)), "application/json", &b)
+		if err != nil {
+			if _, ok := err.(*url.Error); ok {
+				// If we receive a network error try the next member
+				continue
+			}
+
+			break
+		}
+
+		resp.Body.Close()
+		return nil
 	}
-	resp.Body.Close()
-	return nil
+
+	return errors.New("Could not connect to any cluster members")
 }
 
 // Proxy HTTP handlers to Gorilla's mux.Router
