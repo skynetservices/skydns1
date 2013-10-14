@@ -421,6 +421,25 @@ var dnsTestCases = []dnsTestCase{
 	},
 }
 
+func TestGetServices(t *testing.T) {
+	s := newTestServer("", 9590, 9591)
+	defer s.Stop()
+
+	for _, m := range services {
+		s.registry.Add(m)
+	}
+
+	req, _ := http.NewRequest("GET", "/skydns/services/", nil)
+	resp := httptest.NewRecorder()
+
+	s.router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatal("Failed to retrieve service")
+	}
+
+}
+
 func TestDNS(t *testing.T) {
 	s := newTestServer("", 9580, 9581)
 	defer s.Stop()
