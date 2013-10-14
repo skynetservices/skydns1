@@ -63,8 +63,11 @@ func (r *DefaultRegistry) Add(s msg.Service) error {
 
 // Remove Service specified by UUID
 func (r *DefaultRegistry) RemoveUUID(uuid string) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
 	if n, ok := r.nodes[uuid]; ok {
-		return r.Remove(n.value)
+		return r.removeService(n.value)
 	}
 
 	return ErrNotExists
@@ -73,6 +76,9 @@ func (r *DefaultRegistry) RemoveUUID(uuid string) error {
 // Updates the TTL of a service, as well as pushes the expiration time out TTL seconds from now.
 // This serves as a ping, for the service to keep SkyDNS aware of it's existence so that it is not expired, and purged.
 func (r *DefaultRegistry) UpdateTTL(uuid string, ttl uint32, expires time.Time) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
 	if n, ok := r.nodes[uuid]; ok {
 		n.value.TTL = ttl
 		n.value.Expires = expires
@@ -83,22 +89,29 @@ func (r *DefaultRegistry) UpdateTTL(uuid string, ttl uint32, expires time.Time) 
 	return ErrNotExists
 }
 
+
+// Remove service from registry while r.mutex is held
+func (r *DefaultRegistry) removeService(s msg.Service) error {
+	// we can always delete, even if r.tree reports it doesn't exist,
+	// because this means, we just removed a bad service entry. 
+	// Map deletion is also a no-op, if entry not found in map
+	delete(r.nodes, s.UUID)
+
+	// TODO: Validate service has correct values, and getRegistryKey returns a valid value
+	k := getRegistryKey(s)
+
+	return r.tree.remove(strings.Split(k, "."))
+}
+
 // Remove service from registry
 func (r *DefaultRegistry) Remove(s msg.Service) (err error) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	// TODO: Validate service has correct values, and getRegistryKey returns a valid value
-	k := getRegistryKey(s)
-
-	err = r.tree.remove(strings.Split(k, "."))
-
-	if err != nil {
-		return err
+	if n, ok := r.nodes[s.UUID]; ok {
+		return r.removeService(n.value)
 	}
-
-	delete(r.nodes, s.UUID)
-	return nil
+	return ErrNotExists
 }
 
 // Retrieve a service based on it's UUID
