@@ -38,7 +38,7 @@ func init() {
 }
 
 type Server struct {
-	join         string // initial member to join with
+	members      []string // initial members to join with
 	domain       string
 	dnsAddr      string
 	httpAddr     string
@@ -60,9 +60,9 @@ type Server struct {
 }
 
 // Create a new Server
-func NewServer(join string, domain string, dnsAddr string, httpAddr string, dataDir string, rt, wt time.Duration) (s *Server) {
+func NewServer(members []string, domain string, dnsAddr string, httpAddr string, dataDir string, rt, wt time.Duration) (s *Server) {
 	s = &Server{
-		join:         join,
+		members:      members,
 		domain:       domain,
 		dnsAddr:      dnsAddr,
 		httpAddr:     httpAddr,
@@ -116,13 +116,13 @@ func (s *Server) Start() *sync.WaitGroup {
 	s.raftServer.Start()
 
 	// Join to leader if specified.
-	if s.join != "" {
-		log.Println("Joining cluster:", s.join)
+	if len(s.members) > 0 {
+		log.Println("Joining cluster:", strings.Join(s.members, ","))
 
 		if !s.raftServer.IsLogEmpty() {
 			log.Fatal("Cannot join with an existing log")
 		}
-		if err := s.Join(strings.Split(s.join, ",")); err != nil {
+		if err := s.Join(s.members); err != nil {
 			log.Fatal("Fatal: ", err)
 		}
 
