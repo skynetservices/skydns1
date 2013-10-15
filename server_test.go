@@ -281,6 +281,33 @@ func TestGetEnvironments(t *testing.T) {
 
 }
 
+func TestGetRegions(t *testing.T) {
+	s := newTestServer("", 8600, 8601)
+	defer s.Stop()
+
+	for _, m := range services {
+		s.registry.Add(m)
+	}
+
+	req, _ := http.NewRequest("GET", "/skydns/regions/", nil)
+	resp := httptest.NewRecorder()
+
+	s.router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatal("Failed to retrieve region list")
+	}
+
+	//server sends \n at the end, account for this
+	expected := `{"Region1":3,"Region2":2,"Region3":2}`
+	expected = expected + "\n"
+
+	if !bytes.Equal(resp.Body.Bytes(), []byte(expected)) {
+		t.Fatal("Expected %s, got %s", expected, string(resp.Body.Bytes()))
+	}
+
+}
+
 var services = []msg.Service{
 	msg.Service{
 		UUID:        "100",
