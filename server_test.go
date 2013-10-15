@@ -435,7 +435,37 @@ func TestGetServices(t *testing.T) {
 	s.router.ServeHTTP(resp, req)
 
 	if resp.Code != http.StatusOK {
-		t.Fatal("Failed to retrieve service")
+		t.Fatal("Failed to retrieve services")
+	}
+
+	var returnedServices []msg.Service
+
+	err := json.Unmarshal(resp.Body.Bytes(), &returnedServices)
+	if err != nil {
+		t.Error(resp.Body.Bytes())
+		t.Fatal("Failed to unmarshal response from GetServices", err)
+	}
+	if len(returnedServices) != len(services) {
+		t.Fatal("Returned Services don't match expected services")
+	}
+}
+
+func TestGetServicesByRegion(t *testing.T) {
+	s := newTestServer("", 9592, 9593)
+	defer s.Stop()
+
+	for _, m := range services {
+		s.registry.Add(m)
+	}
+	// uuid.host.region.version.service.environment
+	req, _ := http.NewRequest("GET", "/skydns/services/?query=region1.any.any.any", nil)
+	resp := httptest.NewRecorder()
+
+	s.router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Log(resp.Code)
+		t.Fatal("Failed to retrieve services")
 	}
 
 	var returnedServices []msg.Service
@@ -444,7 +474,7 @@ func TestGetServices(t *testing.T) {
 	if err != nil {
 		t.Fatal("Failed to unmarshal response from GetServices")
 	}
-	if len(returnedServices) != len(services) {
+	if len(returnedServices) != 3 {
 		t.Fatal("Returned Services don't match expected services")
 	}
 }

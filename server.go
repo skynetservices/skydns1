@@ -92,7 +92,6 @@ func NewServer(members []string, domain string, dnsAddr string, httpAddr string,
 	// External API Routes
 	// /skydns/services #list all services
 	s.router.HandleFunc("/skydns/services/", s.getServicesHTTPHandler).Methods("GET")
-	// /skydns/services/{region} #list services in region
 	// /skydns/regions #list all regions
 	// /skydns/environnments #list all environments
 

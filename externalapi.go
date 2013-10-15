@@ -8,13 +8,19 @@ import (
 	"net/http"
 )
 
-// Handle API get services requests
 func (s *Server) getServicesHTTPHandler(w http.ResponseWriter, req *http.Request) {
 	log.Println(req.URL.Path)
 	log.Println(s.raftServer.Leader())
 
-	log.Println("Retrieving All Services")
-	serv, err := s.registry.Get("any")
+	var q string
+
+	if q = req.URL.Query().Get("query"); q == "" {
+		q = "any"
+	}
+
+	log.Println("Retrieving All Services for query", q)
+
+	srv, err := s.registry.Get(q)
 
 	if err != nil {
 		switch err {
@@ -29,6 +35,7 @@ func (s *Server) getServicesHTTPHandler(w http.ResponseWriter, req *http.Request
 	}
 
 	var b bytes.Buffer
-	json.NewEncoder(&b).Encode(serv)
+	json.NewEncoder(&b).Encode(srv)
 	w.Write(b.Bytes())
+
 }
