@@ -254,6 +254,33 @@ func TestGetService(t *testing.T) {
 	}
 }
 
+func TestGetEnvironments(t *testing.T) {
+	s := newTestServer("", 8500, 8501)
+	defer s.Stop()
+
+	for _, m := range services {
+		s.registry.Add(m)
+	}
+
+	req, _ := http.NewRequest("GET", "/skydns/environments/", nil)
+	resp := httptest.NewRecorder()
+
+	s.router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatal("Failed to retrieve environment list")
+	}
+
+	//server sends \n at the end, account for this
+	expected := `{"Development":2,"Production":5}`
+	expected = expected + "\n"
+
+	if !bytes.Equal(resp.Body.Bytes(), []byte(expected)) {
+		t.Fatal("Expected %s, got %s", expected, string(resp.Body.Bytes()))
+	}
+
+}
+
 var services = []msg.Service{
 	msg.Service{
 		UUID:        "100",
