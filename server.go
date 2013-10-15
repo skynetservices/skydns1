@@ -55,7 +55,7 @@ type Server struct {
 	httpServer *http.Server
 	router     *mux.Router
 
-	raftServer *raft.Server
+	raftServer raft.Server
 	dataDir    string
 }
 
