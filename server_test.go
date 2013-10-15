@@ -438,6 +438,15 @@ func TestGetServices(t *testing.T) {
 		t.Fatal("Failed to retrieve service")
 	}
 
+	var returnedServices []msg.Service
+
+	err := json.Unmarshal(resp.Body.Bytes(), &returnedServices)
+	if err != nil {
+		t.Fatal("Failed to unmarshal response from GetServices")
+	}
+	if len(returnedServices) != len(services) {
+		t.Fatal("Returned Services don't match expected services")
+	}
 }
 
 func TestDNS(t *testing.T) {
