@@ -26,7 +26,7 @@ func (c *AddServiceCommand) CommandName() string {
 }
 
 // Adds service to registry
-func (c *AddServiceCommand) Apply(server *raft.Server) (interface{}, error) {
+func (c *AddServiceCommand) Apply(server raft.Server) (interface{}, error) {
 	reg := server.Context().(registry.Registry)
 	err := reg.Add(c.Service)
 
@@ -54,7 +54,7 @@ func (c *UpdateTTLCommand) CommandName() string {
 }
 
 // Updates TTL in registry
-func (c *UpdateTTLCommand) Apply(server *raft.Server) (interface{}, error) {
+func (c *UpdateTTLCommand) Apply(server raft.Server) (interface{}, error) {
 	reg := server.Context().(registry.Registry)
 	err := reg.UpdateTTL(c.UUID, c.TTL, c.Expires)
 
@@ -80,7 +80,7 @@ func (c *RemoveServiceCommand) CommandName() string {
 }
 
 // Updates TTL in registry
-func (c *RemoveServiceCommand) Apply(server *raft.Server) (interface{}, error) {
+func (c *RemoveServiceCommand) Apply(server raft.Server) (interface{}, error) {
 
 	reg := server.Context().(registry.Registry)
 	err := reg.RemoveUUID(c.UUID)
