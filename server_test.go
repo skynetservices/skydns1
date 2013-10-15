@@ -254,6 +254,60 @@ func TestGetService(t *testing.T) {
 	}
 }
 
+func TestGetEnvironments(t *testing.T) {
+	s := newTestServer("", 8500, 8501)
+	defer s.Stop()
+
+	for _, m := range services {
+		s.registry.Add(m)
+	}
+
+	req, _ := http.NewRequest("GET", "/skydns/environments/", nil)
+	resp := httptest.NewRecorder()
+
+	s.router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatal("Failed to retrieve environment list")
+	}
+
+	//server sends \n at the end, account for this
+	expected := `{"Development":2,"Production":5}`
+	expected = expected + "\n"
+
+	if !bytes.Equal(resp.Body.Bytes(), []byte(expected)) {
+		t.Fatal("Expected %s, got %s", expected, string(resp.Body.Bytes()))
+	}
+
+}
+
+func TestGetRegions(t *testing.T) {
+	s := newTestServer("", 8600, 8601)
+	defer s.Stop()
+
+	for _, m := range services {
+		s.registry.Add(m)
+	}
+
+	req, _ := http.NewRequest("GET", "/skydns/regions/", nil)
+	resp := httptest.NewRecorder()
+
+	s.router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatal("Failed to retrieve region list")
+	}
+
+	//server sends \n at the end, account for this
+	expected := `{"Region1":3,"Region2":2,"Region3":2}`
+	expected = expected + "\n"
+
+	if !bytes.Equal(resp.Body.Bytes(), []byte(expected)) {
+		t.Fatal("Expected %s, got %s", expected, string(resp.Body.Bytes()))
+	}
+
+}
+
 var services = []msg.Service{
 	msg.Service{
 		UUID:        "100",
@@ -419,6 +473,47 @@ var dnsTestCases = []dnsTestCase{
 			},
 		},
 	},
+}
+
+type servicesTest struct {
+	query string
+	count int
+}
+
+var serviceTestArray []servicesTest = []servicesTest{
+	{"any", 7},
+	{"production", 5},
+	{"testservice.production", 3},
+	{"region1.any.any.production", 1},
+	{"region1.any.testservice.production", 1},
+}
+
+func TestGetServicesWithQueries(t *testing.T) {
+	s := newTestServer("", 9590, 9591)
+	defer s.Stop()
+
+	for _, m := range services {
+		s.registry.Add(m)
+	}
+
+	for _, st := range serviceTestArray {
+		req, _ := http.NewRequest("GET", "/skydns/services/?query="+st.query, nil)
+		resp := httptest.NewRecorder()
+		s.router.ServeHTTP(resp, req)
+		if resp.Code != http.StatusOK {
+			t.Fatal("Failed To Retrieve Services")
+		}
+		var returnedServices []msg.Service
+		err := json.Unmarshal(resp.Body.Bytes(), &returnedServices)
+		if err != nil {
+			t.Fatal("Failed to unmarshal response from server")
+		}
+		if len(returnedServices) != st.count {
+			t.Fatal("Expected %d, got %d services", st.count, len(returnedServices))
+		}
+
+	}
+
 }
 
 func TestDNS(t *testing.T) {

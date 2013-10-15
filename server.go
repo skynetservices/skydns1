@@ -89,6 +89,14 @@ func NewServer(members []string, domain string, dnsAddr string, httpAddr string,
 	s.router.HandleFunc("/skydns/services/{uuid}", s.removeServiceHTTPHandler).Methods("DELETE")
 	s.router.HandleFunc("/skydns/services/{uuid}", s.updateServiceHTTPHandler).Methods("PATCH")
 
+	// External API Routes
+	// /skydns/services #list all services
+	s.router.HandleFunc("/skydns/services/", s.getServicesHTTPHandler).Methods("GET")
+	// /skydns/regions #list all regions
+	s.router.HandleFunc("/skydns/regions/", s.getRegionsHTTPHandler).Methods("GET")
+	// /skydns/environnments #list all environments
+	s.router.HandleFunc("/skydns/environments/", s.getEnvironmentsHTTPHandler).Methods("GET")
+
 	// Raft Routes
 	s.router.HandleFunc("/raft/join", s.joinHandler).Methods("POST")
 
