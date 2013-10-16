@@ -3,8 +3,11 @@ package main
 import (
 	"flag"
 	"github.com/goraft/raft"
+	"github.com/rcrowley/go-metrics"
+	"github.com/rcrowley/go-metrics/stathat"
 	"log"
 	"net"
+	"os"
 	"strings"
 	"time"
 )
@@ -13,6 +16,8 @@ var (
 	join, ldns, lhttp, dataDir, domain string
 	rtimeout, wtimeout                 time.Duration
 	discover                           bool
+	metricsToStdErr                    bool
+	graphiteServer, stathatUser        string
 )
 
 func init() {
@@ -24,6 +29,9 @@ func init() {
 	flag.StringVar(&dataDir, "data", "./data", "SkyDNS data directory")
 	flag.DurationVar(&rtimeout, "rtimeout", 2*time.Second, "Read timeout")
 	flag.DurationVar(&wtimeout, "wtimeout", 2*time.Second, "Write timeout")
+	flag.BoolVar(&metricsToStdErr, "metricsToStdErr", false, "Write metrics to stderr periodically")
+	flag.StringVar(&graphiteServer, "graphiteServer", "", "Graphite Server connection string e.g. 127.0.0.1:2003")
+	flag.StringVar(&stathatUser, "stathatUser", "", "StatHat account for metrics")
 }
 
 func main() {
@@ -54,6 +62,22 @@ func main() {
 	}
 
 	s := NewServer(members, domain, ldns, lhttp, dataDir, rtimeout, wtimeout)
+
+	// Set up metrics if specified on the command line
+	if metricsToStdErr {
+		go metrics.Log(metrics.DefaultRegistry, 60e9, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
+	}
+
+	if len(graphiteServer) > 1 {
+		addr, err := net.ResolveTCPAddr("tcp", graphiteServer)
+		if err != nil {
+			go metrics.Graphite(metrics.DefaultRegistry, 10e9, "skydns", addr)
+		}
+	}
+
+	if len(stathatUser) > 1 {
+		go stathat.Stathat(metrics.DefaultRegistry, 10e9, stathatUser)
+	}
 
 	waiter := s.Start()
 	waiter.Wait()
