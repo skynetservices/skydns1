@@ -8,6 +8,7 @@ import (
 	"github.com/goraft/raft"
 	"github.com/gorilla/mux"
 	"github.com/miekg/dns"
+	"github.com/rcrowley/go-metrics"
 	"github.com/skynetservices/skydns/msg"
 	"github.com/skynetservices/skydns/registry"
 	"log"
@@ -30,11 +31,37 @@ import (
    TTL cleanup thread should shutdown/start based on being elected master
 */
 
+var expiredCount metrics.Counter
+var requestCount metrics.Counter
+var addServiceCount metrics.Counter
+var updateTTLCount metrics.Counter
+var getServiceCount metrics.Counter
+var removeServiceCount metrics.Counter
+
 func init() {
 	// Register Raft Commands
 	raft.RegisterCommand(&AddServiceCommand{})
 	raft.RegisterCommand(&UpdateTTLCommand{})
 	raft.RegisterCommand(&RemoveServiceCommand{})
+
+	expiredCount = metrics.NewCounter()
+	metrics.Register("skydns-expired-entries", expiredCount)
+
+	requestCount = metrics.NewCounter()
+	metrics.Register("skydns-requests", requestCount)
+
+	addServiceCount = metrics.NewCounter()
+	metrics.Register("skydns-add-service-requests", addServiceCount)
+
+	updateTTLCount = metrics.NewCounter()
+	metrics.Register("skydns-update-ttl-requests", updateTTLCount)
+
+	getServiceCount = metrics.NewCounter()
+	metrics.Register("skydns-get-service-requests", getServiceCount)
+
+	removeServiceCount = metrics.NewCounter()
+	metrics.Register("skydns-remove-service-requests", removeServiceCount)
+
 }
 
 type Server struct {
@@ -209,6 +236,7 @@ run:
 				// probably minimal chance of this happening, this will just cause commands to fail,
 				// and new leader will take over anyway
 				for _, uuid := range expired {
+					expiredCount.Inc(1)
 					s.raftServer.Do(NewRemoveServiceCommand(uuid))
 				}
 			}
@@ -277,6 +305,8 @@ func (s *Server) joinHandler(w http.ResponseWriter, req *http.Request) {
 
 // Handler for DNS requests, responsible for parsing DNS request and returning response
 func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
+	requestCount.Inc(1)
+
 	m := new(dns.Msg)
 	m.SetReply(req)
 	m.Answer = make([]dns.RR, 0, 10)
@@ -386,6 +416,8 @@ func (s *Server) redirectToLeader(w http.ResponseWriter, req *http.Request) {
 
 // Handle API add service requests
 func (s *Server) addServiceHTTPHandler(w http.ResponseWriter, req *http.Request) {
+	addServiceCount.Inc(1)
+
 	vars := mux.Vars(req)
 
 	var uuid string
@@ -424,6 +456,7 @@ func (s *Server) addServiceHTTPHandler(w http.ResponseWriter, req *http.Request)
 
 // Handle API remove service requests
 func (s *Server) removeServiceHTTPHandler(w http.ResponseWriter, req *http.Request) {
+	removeServiceCount.Inc(1)
 	vars := mux.Vars(req)
 
 	var uuid string
@@ -449,6 +482,7 @@ func (s *Server) removeServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 
 // Handle API update service requests
 func (s *Server) updateServiceHTTPHandler(w http.ResponseWriter, req *http.Request) {
+	updateTTLCount.Inc(1)
 	vars := mux.Vars(req)
 
 	var uuid string
@@ -479,6 +513,7 @@ func (s *Server) updateServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 
 // Handle API get service requests
 func (s *Server) getServiceHTTPHandler(w http.ResponseWriter, req *http.Request) {
+	getServiceCount.Inc(1)
 	vars := mux.Vars(req)
 	log.Println(req.URL.Path)
 	log.Println(s.raftServer.Leader())

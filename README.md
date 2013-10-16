@@ -20,6 +20,9 @@ Which takes the following flags
 - -data - Directory that Raft logs will be stored in (Defaults to: ./data)
 - -join - When running a cluster of SkyDNS servers as recommended, you'll need to supply followers with where the other members can be found, this can be any member or a comma separated list of members. It does not have to be the leader. Any non-leader you join will redirect you to the leader automatically.
 - -discover - This flag can be used in place of explicitly supplying cluster members via the -join flag. It performs a DNS lookup using the hosts DNS server for NS records associated with the -domain flag to find the SkyDNS instances.
+- -metricsToStdErr - When this flag is set to true, metrics will be periodically written to standard error
+- -graphiteServer - When this flag is set to a Graphite Server URL:PORT, metrics will be posted to a graphite server
+- -stathatUser - When this flag is set to a valid StatHat user, metrics will be posted to that user's StatHat account periodically
 
 ##API
 ### Service Announcements
