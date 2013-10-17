@@ -309,7 +309,7 @@ func TestGetRegions(t *testing.T) {
 }
 
 func TestAuthenticationFailure(t *testing.T) {
-	s := newTestServer("", 9600, 9601, "supersecretpassword")
+	s := newTestServer("", 9610, 9611, "supersecretpassword")
 	defer s.Stop()
 
 	m := msg.Service{
@@ -339,7 +339,7 @@ func TestAuthenticationFailure(t *testing.T) {
 
 func TestAuthenticationSuccess(t *testing.T) {
 	secret := "myimportantsecret"
-	s := newTestServer("", 9610, 9611, secret)
+	s := newTestServer("", 9620, 9621, secret)
 	defer s.Stop()
 
 	m := msg.Service{
@@ -635,6 +635,25 @@ func TestDNS(t *testing.T) {
 	}
 }
 
+func TestDNSARecords(t *testing.T) {
+	s := newTestServer("", 9600, 9601, "")
+	defer s.Stop()
+
+	c := new(dns.Client)
+
+	m := new(dns.Msg)
+	m.SetQuestion("skydns.local.", dns.TypeA)
+	resp, _, err := c.Exchange(m, "localhost:9600")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(resp.Answer) != 1 {
+		t.Fatal("Answer expected to have 2 A records but has %d", len(resp.Answer))
+	}
+}
+
 func newTestServer(leader string, dnsPort int, httpPort int, secret string) *Server {
 	members := make([]string, 0)
 
@@ -647,7 +666,7 @@ func newTestServer(leader string, dnsPort int, httpPort int, secret string) *Ser
 		members = append(members, leader)
 	}
 
-	server := NewServer(members, "skydns.local", net.JoinHostPort("localhost", strconv.Itoa(dnsPort)), net.JoinHostPort("localhost", strconv.Itoa(httpPort)), p, 1*time.Second, 1*time.Second, secret)
+	server := NewServer(members, "skydns.local", net.JoinHostPort("127.0.0.1", strconv.Itoa(dnsPort)), net.JoinHostPort("127.0.0.1", strconv.Itoa(httpPort)), p, 1*time.Second, 1*time.Second, secret)
 	server.Start()
 
 	return server

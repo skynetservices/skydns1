@@ -57,7 +57,7 @@ func main() {
 		}
 
 		for _, n := range ns {
-			members = append(members, n.Host)
+			members = append(members, strings.TrimPrefix(n.Host, "."))
 		}
 	} else if join != "" {
 		members = strings.Split(join, ",")
@@ -81,6 +81,12 @@ func main() {
 		go stathat.Stathat(metrics.DefaultRegistry, 10e9, stathatUser)
 	}
 
-	waiter := s.Start()
+	waiter, err := s.Start()
+
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
 	waiter.Wait()
 }
