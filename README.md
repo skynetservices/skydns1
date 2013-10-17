@@ -1,4 +1,4 @@
-#SkyDNS [![Build Status](https://travis-ci.org/ctran/skydns.png)](https://travis-ci.org/ctran/skydns)
+#SkyDNS [![Build Status](https://travis-ci.org/skynetservices/skydns.png)](https://travis-ci.org/skynetservices/skydns)
 *Version 0.1.0*
 
 SkyDNS is a distributed service for announcement and discovery of services. It leverages Raft for high-availability and consensus, and utilizes DNS for queries to discover available services. This is done by leveraging SRV records in DNS, with special meaning given to subdomains, priorities and weights.
