@@ -23,12 +23,18 @@ Which takes the following flags
 - -metricsToStdErr - When this flag is set to true, metrics will be periodically written to standard error
 - -graphiteServer - When this flag is set to a Graphite Server URL:PORT, metrics will be posted to a graphite server
 - -stathatUser - When this flag is set to a valid StatHat user, metrics will be posted to that user's StatHat account periodically
+- -secret - When this flag is set, the http api will require an authorization header.  
 
 ##API
 ### Service Announcements
 You announce your service by submitting JSON over HTTP to SkyDNS with information about your service.
 
+#### Without Shared Secret 
 `curl -X PUT -L http://localhost:8080/skydns/services/1001 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"web1.site.com","Port":9000,"TTL":10}'`
+
+#### With Shared Secret 
+You have the ability to use a shared secret with SkyDns. To take advantage of the shared secret you would start skydns with the -secret=<secretString> flag.
+`curl -X PUT -H "Authorization mysupersecretsharedsecret" -L http://localhost:8080/skydns/services/1001 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"web1.site.com","Port":9000,"TTL":10}'`
 
 If successful you should receive an http status code of: **201 Created**
 
