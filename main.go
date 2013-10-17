@@ -55,7 +55,7 @@ func main() {
 		}
 
 		for _, n := range ns {
-			members = append(members, n.Host)
+			members = append(members, strings.TrimPrefix(n.Host, "."))
 		}
 	} else if join != "" {
 		members = strings.Split(join, ",")
