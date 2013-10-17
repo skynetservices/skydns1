@@ -79,6 +79,12 @@ func main() {
 		go stathat.Stathat(metrics.DefaultRegistry, 10e9, stathatUser)
 	}
 
-	waiter := s.Start()
+	waiter, err := s.Start()
+
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
 	waiter.Wait()
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/skynetservices/skydns/registry"
 	"log"
 	"math"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -137,9 +138,9 @@ func (s *Server) DNSAddr() string { return s.dnsAddr }
 func (s *Server) HTTPAddr() string { return s.httpAddr }
 
 // Starts DNS server and blocks waiting to be killed.
-func (s *Server) Start() *sync.WaitGroup {
+func (s *Server) Start() (*sync.WaitGroup, error) {
 	var err error
-	log.Printf("Initializing Raft Server: %s", s.dataDir)
+	log.Printf("Initializing Server. DNS Addr: %q, HTTP Addr: %q, Data Dir: %q", s.dnsAddr, s.httpAddr, s.dataDir)
 
 	// Initialize and start Raft server.
 	transporter := raft.NewHTTPTransporter("/raft")
@@ -157,8 +158,9 @@ func (s *Server) Start() *sync.WaitGroup {
 		if !s.raftServer.IsLogEmpty() {
 			log.Fatal("Cannot join with an existing log")
 		}
+
 		if err := s.Join(s.members); err != nil {
-			log.Fatal("Fatal: ", err)
+			return nil, err
 		}
 
 		log.Println("Joined cluster")
@@ -174,6 +176,7 @@ func (s *Server) Start() *sync.WaitGroup {
 
 		if err != nil {
 			log.Fatal(err)
+			return nil, err
 		}
 
 	} else {
@@ -210,12 +213,41 @@ func (s *Server) Start() *sync.WaitGroup {
 	s.waiter.Add(1)
 	go s.run()
 
-	return s.waiter
+	return s.waiter, nil
 }
 
+// Stops server
 func (s *Server) Stop() {
 	log.Println("Stopping server")
 	s.waiter.Done()
+}
+
+// Returns the current leader
+func (s *Server) Leader() string {
+	l := s.raftServer.Leader()
+
+	if l == "" {
+		// We are a single node cluster, we are the leader
+		return s.raftServer.Name()
+	}
+
+	return l
+}
+
+// Is this instance the current leader
+func (s *Server) IsLeader() bool {
+	return s.raftServer.State() == raft.Leader
+}
+
+// Returns a slice of members
+func (s *Server) Members() (members []string) {
+	peers := s.raftServer.Peers()
+
+	for _, p := range peers {
+		members = append(members, strings.TrimPrefix(p.ConnectionString, "http://"))
+	}
+
+	return
 }
 
 func (s *Server) run() {
@@ -229,7 +261,7 @@ run:
 		select {
 		case <-tick:
 			// We are the leader, we are responsible for managing TTLs
-			if s.raftServer.State() == raft.Leader {
+			if s.IsLeader() {
 				expired := s.registry.GetExpired()
 
 				// TODO: Possible race condition? We could be demoted while iterating
@@ -261,13 +293,15 @@ func (s *Server) Join(members []string) error {
 		log.Println("Attempting to connect to:", m)
 
 		resp, err := http.Post(fmt.Sprintf("http://%s/raft/join", strings.TrimSpace(m)), "application/json", &b)
+		log.Println("Post returned")
+
 		if err != nil {
 			if _, ok := err.(*url.Error); ok {
 				// If we receive a network error try the next member
 				continue
 			}
 
-			break
+			return err
 		}
 
 		resp.Body.Close()
@@ -284,6 +318,7 @@ func (s *Server) HandleFunc(pattern string, handler func(http.ResponseWriter, *h
 
 // Handles incomming RAFT joins
 func (s *Server) joinHandler(w http.ResponseWriter, req *http.Request) {
+	log.Println("Processing incoming join")
 	command := &raft.DefaultJoinCommand{}
 
 	if err := json.NewDecoder(req.Body).Decode(&command); err != nil {
@@ -295,6 +330,7 @@ func (s *Server) joinHandler(w http.ResponseWriter, req *http.Request) {
 	if _, err := s.raftServer.Do(command); err != nil {
 		switch err {
 		case raft.NotLeaderError:
+			log.Println("Redirecting to leader")
 			s.redirectToLeader(w, req)
 		default:
 			log.Println("Error processing join:", err)
@@ -318,12 +354,11 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	//		return
 	//	}
 	q := req.Question[0]
-	var weight uint16
+
+	log.Printf("Received DNS Request for %q from %q", q.Name, w.RemoteAddr())
 
 	if q.Qtype == dns.TypeANY || q.Qtype == dns.TypeSRV {
-		log.Printf("Received DNS Request for %q from %q", q.Name, w.RemoteAddr())
-		key := strings.TrimSuffix(q.Name, s.domain+".")
-		services, err := s.registry.Get(key)
+		records, err := s.getSRVRecords(q)
 
 		if err != nil {
 			m.SetRcode(req, dns.RcodeServerFailure)
@@ -331,49 +366,106 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 			return
 		}
 
-		weight = 0
-		if len(services) > 0 {
-			weight = uint16(math.Floor(float64(100 / len(services))))
+		m.Answer = append(m.Answer, records...)
+	}
+
+	if q.Qtype == dns.TypeANY || q.Qtype == dns.TypeA {
+		records, err := s.getARecords(q)
+
+		if err != nil {
+			m.SetRcode(req, dns.RcodeServerFailure)
+			log.Println("Error: ", err)
+			return
 		}
 
-		for _, serv := range services {
-			// TODO: Dynamically set weight
-			m.Answer = append(m.Answer, &dns.SRV{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeSRV, Class: dns.ClassINET, Ttl: serv.TTL}, Priority: 10, Weight: weight, Port: serv.Port, Target: serv.Host + "."})
+		m.Answer = append(m.Answer, records...)
+	}
+}
+
+func (s *Server) getARecords(q dns.Question) (records []dns.RR, err error) {
+	var h string
+	name := strings.TrimSuffix(q.Name, ".")
+
+	// Leader should always be listed
+	if name == "leader."+s.domain || name == "master."+s.domain || name == s.domain {
+		h, _, err = net.SplitHostPort(s.Leader())
+
+		if err != nil {
+			return
 		}
 
-		// Append matching entries in different region than requested with a higher priority
-		labels := dns.SplitDomainName(key)
+		records = append(records, &dns.A{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 15}, A: net.ParseIP(h)})
+	}
 
-		pos := len(labels) - 4
-		if len(labels) >= 4 && labels[pos] != "any" && labels[pos] != "all" {
-			region := labels[pos]
-			labels[pos] = "any"
-
-			// TODO: This is pretty much a copy of the above, and should be abstracted
-			additionalServices, err := s.registry.Get(strings.Join(labels, "."))
+	if name == s.domain {
+		for _, m := range s.Members() {
+			h, _, err = net.SplitHostPort(m)
 
 			if err != nil {
-				m.SetRcode(req, dns.RcodeServerFailure)
-				log.Println("Error: ", err)
 				return
 			}
 
-			weight = 0
-			if len(additionalServices) <= len(services) {
-				return
-			}
-
-			weight = uint16(math.Floor(float64(100 / (len(additionalServices) - len(services)))))
-			for _, serv := range additionalServices {
-				// Exclude entries we already have
-				if strings.ToLower(serv.Region) == region {
-					continue
-				}
-				// TODO: Dynamically set priority and weight
-				m.Answer = append(m.Answer, &dns.SRV{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeSRV, Class: dns.ClassINET, Ttl: serv.TTL}, Priority: 20, Weight: weight, Port: serv.Port, Target: serv.Host + "."})
-			}
+			records = append(records, &dns.A{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 15}, A: net.ParseIP(h)})
 		}
 	}
+
+	return
+}
+
+func (s *Server) getSRVRecords(q dns.Question) (records []dns.RR, err error) {
+	var weight uint16
+	services := make([]msg.Service, 0)
+
+	key := strings.TrimSuffix(q.Name, s.domain+".")
+	services, err = s.registry.Get(key)
+
+	if err != nil {
+		return
+	}
+
+	weight = 0
+	if len(services) > 0 {
+		weight = uint16(math.Floor(float64(100 / len(services))))
+	}
+
+	for _, serv := range services {
+		// TODO: Dynamically set weight
+		records = append(records, &dns.SRV{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeSRV, Class: dns.ClassINET, Ttl: serv.TTL}, Priority: 10, Weight: weight, Port: serv.Port, Target: serv.Host + "."})
+	}
+
+	// Append matching entries in different region than requested with a higher priority
+	labels := dns.SplitDomainName(key)
+
+	pos := len(labels) - 4
+	if len(labels) >= 4 && labels[pos] != "any" && labels[pos] != "all" {
+		region := labels[pos]
+		labels[pos] = "any"
+
+		// TODO: This is pretty much a copy of the above, and should be abstracted
+		additionalServices := make([]msg.Service, len(services))
+		additionalServices, err = s.registry.Get(strings.Join(labels, "."))
+
+		if err != nil {
+			return
+		}
+
+		weight = 0
+		if len(additionalServices) <= len(services) {
+			return
+		}
+
+		weight = uint16(math.Floor(float64(100 / (len(additionalServices) - len(services)))))
+		for _, serv := range additionalServices {
+			// Exclude entries we already have
+			if strings.ToLower(serv.Region) == region {
+				continue
+			}
+			// TODO: Dynamically set priority and weight
+			records = append(records, &dns.SRV{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeSRV, Class: dns.ClassINET, Ttl: serv.TTL}, Priority: 20, Weight: weight, Port: serv.Port, Target: serv.Host + "."})
+		}
+	}
+
+	return
 }
 
 // Returns the connection string.
@@ -406,8 +498,8 @@ func (s *Server) listenAndServe() {
 }
 
 func (s *Server) redirectToLeader(w http.ResponseWriter, req *http.Request) {
-	if s.raftServer.Leader() != "" {
-		http.Redirect(w, req, "http://"+s.raftServer.Leader()+req.URL.Path, http.StatusMovedPermanently)
+	if s.Leader() != "" {
+		http.Redirect(w, req, "http://"+s.Leader()+req.URL.Path, http.StatusMovedPermanently)
 	} else {
 		log.Println("Error: Leader Unknown")
 		http.Error(w, "Leader unknown", http.StatusInternalServerError)
@@ -515,8 +607,6 @@ func (s *Server) updateServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 func (s *Server) getServiceHTTPHandler(w http.ResponseWriter, req *http.Request) {
 	getServiceCount.Inc(1)
 	vars := mux.Vars(req)
-	log.Println(req.URL.Path)
-	log.Println(s.raftServer.Leader())
 
 	var uuid string
 	var ok bool
