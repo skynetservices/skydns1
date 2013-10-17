@@ -418,10 +418,8 @@ func (s *Server) redirectToLeader(w http.ResponseWriter, req *http.Request) {
 
 //shared auth method on server.
 func (s *Server) authenticate(secret string) (err error) {
-	if s.secret != "" {
-		if secret != s.secret {
-			err = errors.New("You must authenticaticate this request")
-		}
+	if s.secret != "" && secret != s.secret {
+		err = errors.New("Forbidden")
 	}
 	return
 }
