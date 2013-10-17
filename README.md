@@ -36,6 +36,11 @@ You announce your service by submitting JSON over HTTP to SkyDNS with informatio
 You have the ability to use a shared secret with SkyDns. To take advantage of the shared secret you would start skydns with the -secret=<secretString> flag.
 `curl -X PUT -H "Authorization mysupersecretsharedsecret" -L http://localhost:8080/skydns/services/1001 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"web1.site.com","Port":9000,"TTL":10}'`
 
+
+If usuccessful you should receive an http status code of: **403 Forbidden**
+
+#### Result 
+
 If successful you should receive an http status code of: **201 Created**
 
 If a service with this UUID already exists you will receive back an http status code of: **409 Conflict**
