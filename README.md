@@ -9,7 +9,7 @@ SkyDNS is a distributed service for announcement and discovery of services. It l
 
 Compile SkyDNS, and execute it
 
-`go build`
+`./build.sh`
 
 `./skydns`
 
