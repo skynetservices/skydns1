@@ -85,10 +85,11 @@ type Server struct {
 
 	raftServer raft.Server
 	dataDir    string
+	secret     string
 }
 
 // Create a new Server
-func NewServer(members []string, domain string, dnsAddr string, httpAddr string, dataDir string, rt, wt time.Duration) (s *Server) {
+func NewServer(members []string, domain string, dnsAddr string, httpAddr string, dataDir string, rt, wt time.Duration, secret string) (s *Server) {
 	s = &Server{
 		members:      members,
 		domain:       domain,
@@ -101,6 +102,7 @@ func NewServer(members []string, domain string, dnsAddr string, httpAddr string,
 		dataDir:      dataDir,
 		dnsHandler:   dns.NewServeMux(),
 		waiter:       new(sync.WaitGroup),
+		secret:       secret,
 	}
 
 	if _, err := os.Stat(s.dataDir); os.IsNotExist(err) {
@@ -506,14 +508,31 @@ func (s *Server) redirectToLeader(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+//shared auth method on server.
+func (s *Server) authenticate(secret string) (err error) {
+	if s.secret != "" && secret != s.secret {
+		err = errors.New("Forbidden")
+	}
+	return
+}
+
 // Handle API add service requests
 func (s *Server) addServiceHTTPHandler(w http.ResponseWriter, req *http.Request) {
 	addServiceCount.Inc(1)
-
 	vars := mux.Vars(req)
 
 	var uuid string
 	var ok bool
+	var secret string
+
+	//read the authorization header to get the secret.
+	secret = req.Header.Get("Authorization")
+
+	if err := s.authenticate(secret); err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	if uuid, ok = vars["uuid"]; !ok {
 		http.Error(w, "UUID required", http.StatusBadRequest)
 		return
@@ -553,6 +572,16 @@ func (s *Server) removeServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 
 	var uuid string
 	var ok bool
+	var secret string
+
+	//read the authorization header to get the secret.
+	secret = req.Header.Get("Authorization")
+
+	if err := s.authenticate(secret); err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	if uuid, ok = vars["uuid"]; !ok {
 		http.Error(w, "UUID required", http.StatusBadRequest)
 		return
@@ -579,6 +608,16 @@ func (s *Server) updateServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 
 	var uuid string
 	var ok bool
+	var secret string
+
+	//read the authorization header to get the secret.
+	secret = req.Header.Get("Authorization")
+
+	if err := s.authenticate(secret); err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	if uuid, ok = vars["uuid"]; !ok {
 		http.Error(w, "UUID required", http.StatusBadRequest)
 		return
@@ -610,6 +649,16 @@ func (s *Server) getServiceHTTPHandler(w http.ResponseWriter, req *http.Request)
 
 	var uuid string
 	var ok bool
+	var secret string
+
+	//read the authorization header to get the secret.
+	secret = req.Header.Get("Authorization")
+
+	if err := s.authenticate(secret); err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	if uuid, ok = vars["uuid"]; !ok {
 		http.Error(w, "UUID required", http.StatusBadRequest)
 		return

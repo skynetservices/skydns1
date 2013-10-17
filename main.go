@@ -18,6 +18,7 @@ var (
 	discover                           bool
 	metricsToStdErr                    bool
 	graphiteServer, stathatUser        string
+	secret                             string
 )
 
 func init() {
@@ -32,6 +33,7 @@ func init() {
 	flag.BoolVar(&metricsToStdErr, "metricsToStdErr", false, "Write metrics to stderr periodically")
 	flag.StringVar(&graphiteServer, "graphiteServer", "", "Graphite Server connection string e.g. 127.0.0.1:2003")
 	flag.StringVar(&stathatUser, "stathatUser", "", "StatHat account for metrics")
+	flag.StringVar(&secret, "secret", "", "Shared secret for use with http api")
 }
 
 func main() {
@@ -61,7 +63,7 @@ func main() {
 		members = strings.Split(join, ",")
 	}
 
-	s := NewServer(members, domain, ldns, lhttp, dataDir, rtimeout, wtimeout)
+	s := NewServer(members, domain, ldns, lhttp, dataDir, rtimeout, wtimeout, secret)
 
 	// Set up metrics if specified on the command line
 	if metricsToStdErr {
