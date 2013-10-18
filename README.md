@@ -23,7 +23,7 @@ Which takes the following flags
 - -metricsToStdErr - When this flag is set to true, metrics will be periodically written to standard error
 - -graphiteServer - When this flag is set to a Graphite Server URL:PORT, metrics will be posted to a graphite server
 - -stathatUser - When this flag is set to a valid StatHat user, metrics will be posted to that user's StatHat account periodically
-- -secret - When this flag is set, the http api will require an authorization header.  
+- -secret - When this variable is set, the http api will require an authorization header that matches the secret passed to skydns when it starts  
 
 ##API
 ### Service Announcements
