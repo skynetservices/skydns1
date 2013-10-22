@@ -276,7 +276,7 @@ func TestGetEnvironments(t *testing.T) {
 	expected = expected + "\n"
 
 	if !bytes.Equal(resp.Body.Bytes(), []byte(expected)) {
-		t.Fatal("Expected %s, got %s", expected, string(resp.Body.Bytes()))
+		t.Fatal("Expected ", expected, " got %s", string(resp.Body.Bytes()))
 	}
 
 }
@@ -303,7 +303,7 @@ func TestGetRegions(t *testing.T) {
 	expected = expected + "\n"
 
 	if !bytes.Equal(resp.Body.Bytes(), []byte(expected)) {
-		t.Fatal("Expected %s, got %s", expected, string(resp.Body.Bytes()))
+		t.Fatal("Expected ", expected, " got %s", string(resp.Body.Bytes()))
 	}
 
 }
@@ -569,7 +569,7 @@ func TestGetServicesWithQueries(t *testing.T) {
 			t.Fatal("Failed to unmarshal response from server")
 		}
 		if len(returnedServices) != st.count {
-			t.Fatal("Expected %d, got %d services", st.count, len(returnedServices))
+			t.Fatal("Expected ", st.count, " got %d services", len(returnedServices))
 		}
 
 	}
@@ -650,7 +650,7 @@ func TestDNSARecords(t *testing.T) {
 	}
 
 	if len(resp.Answer) != 1 {
-		t.Fatal("Answer expected to have 2 A records but has %d", len(resp.Answer))
+		t.Fatal("Answer expected to have 2 A records but has", len(resp.Answer))
 	}
 }
 
