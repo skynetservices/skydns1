@@ -318,7 +318,7 @@ func (s *Server) HandleFunc(pattern string, handler func(http.ResponseWriter, *h
 	s.router.HandleFunc(pattern, handler)
 }
 
-// Handles incomming RAFT joins
+// Handles incoming RAFT joins
 func (s *Server) joinHandler(w http.ResponseWriter, req *http.Request) {
 	log.Println("Processing incoming join")
 	command := &raft.DefaultJoinCommand{}
