@@ -72,8 +72,8 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 	// checking how many services actually use the callback. If zero
 	// we delete the callback again.
 
-	for _, s := range services {
-		if _, err := s.raftServer.Do(NewAddCallbackCommand(s, cb.UUID)); err != nil {
+	for _, serv := range services {
+		if _, err := s.raftServer.Do(NewAddCallbackCommand(serv, cb.UUID)); err != nil {
 			switch err {
 			case registry.ErrNotExists:
 				http.Error(w, err.Error(), http.StatusNotFound)
