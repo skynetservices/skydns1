@@ -1,31 +1,31 @@
 package server
 
 import (
-//	"bytes"
+	//	"bytes"
 	"encoding/json"
-//	"errors"
-//	"fmt"
+	//	"errors"
+	//	"fmt"
 	"github.com/goraft/raft"
 	"github.com/gorilla/mux"
-//	"github.com/miekg/dns"
-//	"github.com/rcrowley/go-metrics"
+	//	"github.com/miekg/dns"
+	//	"github.com/rcrowley/go-metrics"
 	"github.com/skynetservices/skydns/msg"
 	"github.com/skynetservices/skydns/registry"
 	"log"
-//	"math"
-//	"net"
+	//	"math"
+	//	"net"
 	"net/http"
-//	"net/url"
-//	"os"
-//	"os/signal"
-//	"strings"
-//	"sync"
-//	"time"
+	//	"net/url"
+	//	"os"
+	//	"os/signal"
+	//	"strings"
+	//	"sync"
+	//	"time"
 )
 
 // Handle API add callback requests
 func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request) {
-//	addServiceCount.Inc(1)
+	//	addServiceCount.Inc(1)
 	vars := mux.Vars(req)
 
 	var uuid string
@@ -60,7 +60,7 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 	// Lookup the service(s)
 	// TODO: getRegistryKey(s) isn't exported.
 	// TODO: version is thus not correctly formatted
-	key :=cb.Name + "." + cb.Version + "." + cb.Environment + "." + cb.Region +
+	key := cb.Name + "." + cb.Version + "." + cb.Environment + "." + cb.Region +
 		"." + cb.Host
 	services, err := s.registry.Get(key)
 	if err != nil || len(services) == 0 {
@@ -72,19 +72,22 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 	// checking how many services actually use the callback. If zero
 	// we delete the callback again.
 
-
-	if _, err := s.raftServer.Do(NewAddServiceCommand(services[0])); err != nil {
-		switch err {
-		case registry.ErrExists:
-			http.Error(w, err.Error(), http.StatusConflict)
-		case raft.NotLeaderError:
-			s.redirectToLeader(w, req)
-		default:
-			log.Println("Error: ", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+	for _, s := range services {
+		if _, err := s.raftServer.Do(NewAddCallbackCommand(s, cb.UUID)); err != nil {
+			switch err {
+			case registry.ErrNotExists:
+				http.Error(w, err.Error(), http.StatusNotFound)
+				// Don't return here, other services might exist
+				// TODO(miek): set error in var and check afterwards?
+			case raft.NotLeaderError:
+				s.redirectToLeader(w, req)
+				return
+			default:
+				log.Println("Error: ", err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
-
-		return
 	}
 	w.WriteHeader(http.StatusCreated)
 }

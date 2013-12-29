@@ -36,7 +36,7 @@ func (s *Service) UpdateTTL() {
 }
 
 type Callback struct {
-	UUID        string
+	UUID string
 
 	// Name of the service
 	Name        string
@@ -45,6 +45,6 @@ type Callback struct {
 	Region      string
 	Host        string
 
-	Reply	    string
-	Port        uint16
+	Reply string
+	Port  uint16
 }
