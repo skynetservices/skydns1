@@ -104,7 +104,7 @@ func (r *DefaultRegistry) removeService(s msg.Service) error {
 	// No matter what, call the callbacks
 	go func() {
 		for _, c := range s.Callback {
-			c.Call()
+			c.Call(s)
 		}
 	}()
 
