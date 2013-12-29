@@ -25,7 +25,7 @@ import (
 
 // Handle API add callback requests
 func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request) {
-	addServiceCount.Inc(1)
+//	addServiceCount.Inc(1)
 	vars := mux.Vars(req)
 
 	var uuid string
@@ -47,17 +47,25 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 
 	// find service
 
-	var serv msg.Service
+	var cb msg.Callback
 
-	if err := json.NewDecoder(req.Body).Decode(&serv); err != nil {
+	if err := json.NewDecoder(req.Body).Decode(&cb); err != nil {
 		log.Println("Error: ", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	serv.UUID = uuid
+	cb.UUID = uuid
 
-	if _, err := s.raftServer.Do(NewAddServiceCommand(serv)); err != nil {
+	// Lookup the service(s)
+	key := cb.Name + "." + cb.Version + "." + cb.Environment + "." + cb.Region +
+		"." + cb.Host
+	services, err := s.registry.Get(key)
+	if err != nil || len(services) == 0 {
+		http.Error(w, err.Error(), http.StatusNotFound)
+	}
+
+	if _, err := s.raftServer.Do(NewAddServiceCommand(services[0])); err != nil {
 		switch err {
 		case registry.ErrExists:
 			http.Error(w, err.Error(), http.StatusConflict)
@@ -70,6 +78,5 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 
 		return
 	}
-
 	w.WriteHeader(http.StatusCreated)
 }
