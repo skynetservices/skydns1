@@ -3,6 +3,7 @@ package registry
 import (
 	"errors"
 	"fmt"
+	"github.com/miekg/dns"
 	"github.com/skynetservices/skydns/msg"
 	"strings"
 	"sync"
@@ -130,12 +131,12 @@ func (r *DefaultRegistry) GetUUID(uuid string) (s msg.Service, err error) {
 	return s, ErrNotExists
 }
 
-/* Retrieve a list of services from the registry that matches the given domain pattern
+/* Get retrieves a list of services from the registry that matches the given domain pattern
  *
  * uuid.host.region.version.service.environment
- * any of these positions may supply the wildcard "any" or "all", to have all values match in this position.
+ * any of these positions may supply the wildcard "*", to have all values match in this position.
  * additionally, you only need to specify as much of the domain as needed the domain version.service.environment is perfectly acceptable,
- * and will assume "any" for all the ommited subdomain positions
+ * and will assume "*" for all the ommited subdomain positions
  */
 func (r *DefaultRegistry) Get(domain string) ([]msg.Service, error) {
 	// TODO: account for version wildcards
@@ -147,7 +148,7 @@ func (r *DefaultRegistry) Get(domain string) ([]msg.Service, error) {
 		domain = domain[:len(domain)-1]
 	}
 
-	tree := strings.Split(domain, ".")
+	tree := dns.SplitDomainName(domain)
 
 	// Domains can be partial, and we should assume wildcards for the unsupplied portions
 	if len(tree) < 6 {
@@ -155,12 +156,11 @@ func (r *DefaultRegistry) Get(domain string) ([]msg.Service, error) {
 		t := make([]string, pad)
 
 		for i := 0; i < pad; i++ {
-			t[i] = "any"
+			t[i] = "*"
 		}
 
 		tree = append(t, tree...)
 	}
-
 	return r.tree.get(tree)
 }
 
@@ -274,7 +274,7 @@ func (n *node) get(tree []string) (services []msg.Service, err error) {
 	// We've hit the bottom
 	if len(tree) == 1 {
 		switch tree[0] {
-		case "all", "any":
+		case "*":
 			if len(n.leaves) == 0 {
 				return services, ErrNotExists
 			}
@@ -304,7 +304,7 @@ func (n *node) get(tree []string) (services []msg.Service, err error) {
 	k := tree[len(tree)-1]
 
 	switch k {
-	case "all", "any":
+	case "*":
 		if len(n.leaves) == 0 {
 			return services, ErrNotExists
 		}
@@ -327,7 +327,6 @@ func (n *node) get(tree []string) (services []msg.Service, err error) {
 
 		return n.leaves[k].get(tree[:len(tree)-1])
 	}
-
 	return
 }
 

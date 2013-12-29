@@ -149,7 +149,7 @@ func TestGet(t *testing.T) {
 	}
 
 	// Test Wildcard
-	results, err = reg.Get("any.localhost.test.all.testservice.production")
+	results, err = reg.Get("*.localhost.test.*.testservice.production")
 
 	if err != nil {
 		t.Fatal(err)
@@ -170,8 +170,8 @@ func TestGet(t *testing.T) {
 		t.Fatal("Failed to return correct services")
 	}
 
-	// Test only supplying any for environment
-	results, err = reg.Get("any")
+	// Test only supplying * for environment
+	results, err = reg.Get("*")
 
 	if err != nil {
 		t.Fatal(err)
