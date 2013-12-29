@@ -36,8 +36,7 @@ You announce your service by submitting JSON over HTTP to SkyDNS with informatio
 You have the ability to use a shared secret with SkyDns. To take advantage of the shared secret you would start skydns with the -secret=<secretString> flag.
 `curl -X PUT -H "Authorization mysupersecretsharedsecret" -L http://localhost:8080/skydns/services/1001 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"web1.site.com","Port":9000,"TTL":10}'`
 
-
-If usuccessful you should receive an http status code of: **403 Forbidden**
+If unsuccessful you should receive an http status code of: **403 Forbidden**
 
 #### Result 
 
@@ -45,7 +44,7 @@ If successful you should receive an http status code of: **201 Created**
 
 If a service with this UUID already exists you will receive back an http status code of: **409 Conflict**
 
-SkyDNS will now have an entry for your service that will live for the number of seconds supplied in your TTL (10 seconds in our example), unless you send a  heartbeat to update the TTL.
+SkyDNS will now have an entry for your service that will live for the number of seconds supplied in your TTL (10 seconds in our example), unless you send a heartbeat to update the TTL.
 
 ### Heartbeat / Keep alive
 SkyDNS requires that services submit an HTTP request to update their TTL within the TTL they last supplied. If the service fails to do so within this timeframe SkyDNS will expire the service automatically. This will allow for nodes to fail and DNS to reflect this quickly.
@@ -60,9 +59,21 @@ If you wish to remove your service from SkyDNS for any reason without waiting fo
 `curl -X DELETE -L http://localhost:8080/skydns/services/1001`
 
 ### Retrieve Service Info via API
-Currently you may only retrieve a service's info by UUID of the service, in the future we may implement querying of the services similar to the DNS  interface.
+Currently you may only retrieve a service's info by UUID of the service, in the future we may implement querying of the services similar to the DNS interface.
 
 `curl -X GET -L http://localhost:8080/skydns/services/1001`
+
+### Call backs
+Registering a call back is similar to registering a service.
+A service that registered a call back will receive an HTTP (TODO(miek): where what how
+exactly?). Every time something changes in the service: the callback is executed.
+A callback stays active, until it is deleted (TODO(miek): yes/no?).
+
+`curl -X PUT -L http://localhost:8080/skydns/callbacks/1001 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"web1.site.com",Reply:"web2.example.nl","Port":5441}'`
+
+This will result in the call back being sent to `web2.example.nl` on port 5441.
+
+TODO(miek): Deleting callbacks
 
 ##Discovery (DNS)
 You can find services by querying SkyDNS via any DNS client or utility. It uses a known domain syntax with wildcards to find matching services.
@@ -182,6 +193,7 @@ As awesome as SkyDNS is in its current state we plan to further development with
 * Weights based on system load/memory availability on the given host, so that idle nodes recieve a higher weight and therefore a larger percentage of the requests.
 * Semantic version lookups (1.0 - returns any 1.0.x, 1.1.0 - Explicit 1.0.0, 1 - returns any 1.x.x), possibly priorities based on versions?
 * Support for peers that don't participate in consensus
+* Add support for patching other things than the TTL? Like the host(s) for a service.
 
 ## License
 The MIT License (MIT)
