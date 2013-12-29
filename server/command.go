@@ -103,16 +103,35 @@ func NewAddCallbackCommand(s msg.Service, uuid string) *AddCallbackCommand {
 	return &AddCallbackCommand{s, uuid}
 }
 
-// Name of command
 func (c *AddCallbackCommand) CommandName() string { return "add-callback" }
 
-// Updates callback in registry
 func (c *AddCallbackCommand) Apply(server raft.Server) (interface{}, error) {
 	reg := server.Context().(registry.Registry)
 	err := reg.AddCallback(c.Service, c.UUID)
 
 	if err == nil {
 		log.Println("Added Callback:", c.Service, c.UUID)
+	}
+	return c.Service, err
+}
+
+type RemoveCallbackCommand struct {
+	Service msg.Service
+	UUID    string // callback uuid
+}
+
+func NewRemoveCallbackCommand(s msg.Service, uuid string) *RemoveCallbackCommand {
+	return &RemoveCallbackCommand{s, uuid}
+}
+
+func (c *RemoveCallbackCommand) CommandName() string { return "remove-callback" }
+
+func (c *RemoveCallbackCommand) Apply(server raft.Server) (interface{}, error) {
+	reg := server.Context().(registry.Registry)
+	err := reg.RemoveCallback(c.Service, c.UUID)
+
+	if err == nil {
+		log.Println("Removed Callback:", c.Service, c.UUID)
 	}
 	return c.Service, err
 }
