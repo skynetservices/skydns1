@@ -114,24 +114,3 @@ func (c *AddCallbackCommand) Apply(server raft.Server) (interface{}, error) {
 	}
 	return c.Service, err
 }
-
-type RemoveCallbackCommand struct {
-	Service  msg.Service
-	Callback msg.Callback
-}
-
-func NewRemoveCallbackCommand(s msg.Service, c msg.Callback) *RemoveCallbackCommand {
-	return &RemoveCallbackCommand{s, c}
-}
-
-func (c *RemoveCallbackCommand) CommandName() string { return "remove-callback" }
-
-func (c *RemoveCallbackCommand) Apply(server raft.Server) (interface{}, error) {
-	reg := server.Context().(registry.Registry)
-	err := reg.RemoveCallback(c.Service, c.Callback)
-
-	if err == nil {
-		log.Println("Removed Callback:", c.Service, c.Callback)
-	}
-	return c.Service, err
-}

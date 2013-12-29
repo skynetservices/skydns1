@@ -28,7 +28,6 @@ type Registry interface {
 	RemoveUUID(uuid string) error
 	UpdateTTL(uuid string, ttl uint32, expires time.Time) error
 	AddCallback(s msg.Service, c msg.Callback) error
-	RemoveCallback(s msg.Service, c msg.Callback) error
 	Len() int
 }
 
@@ -191,17 +190,6 @@ func (r *DefaultRegistry) AddCallback(s msg.Service, c msg.Callback) error {
 
 	if n, ok := r.nodes[c.UUID]; ok {
 		n.value.Callback[c.UUID] = &c
-		return nil
-	}
-	return ErrNotExists
-}
-
-func (r *DefaultRegistry) RemoveCallback(s msg.Service, c msg.Callback) error {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	if n, ok := r.nodes[c.UUID]; ok {
-		delete(n.value.Callback, c.UUID)
 		return nil
 	}
 	return ErrNotExists
