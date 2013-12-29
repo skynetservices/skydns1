@@ -351,10 +351,6 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 
 	defer w.WriteMsg(m)
 
-	// happens in dns lib when using default mux \o/
-	//	if len(req.Question) < 1 {
-	//		return
-	//	}
 	q := req.Question[0]
 
 	log.Printf("Received DNS Request for %q from %q", q.Name, w.RemoteAddr())
