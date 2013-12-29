@@ -56,6 +56,8 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 	}
 
 	cb.UUID = uuid
+	// We don't care about the other values once we have the 
+	// key, set them to zero to save some memory.
 
 	// Lookup the service(s)
 	// TODO: getRegistryKey(s) isn't exported.
@@ -66,14 +68,14 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 	if err != nil || len(services) == 0 {
 		http.Error(w, err.Error(), http.StatusNotFound)
 	}
-	// Add the callback and then add it to the services, this
-	// has a race condition in that services may be deleted
-	// before the callback has been added. We check for this, by
-	// checking how many services actually use the callback. If zero
-	// we delete the callback again.
+	cb.Name = ""
+	cb.Version = ""
+	cb.Environment = ""
+	cb.Region = ""
+	cb.Host = ""
 
 	for _, serv := range services {
-		if _, err := s.raftServer.Do(NewAddCallbackCommand(serv, cb.UUID)); err != nil {
+		if _, err := s.raftServer.Do(NewAddCallbackCommand(serv, cb)); err != nil {
 			switch err {
 			case registry.ErrNotExists:
 				http.Error(w, err.Error(), http.StatusNotFound)

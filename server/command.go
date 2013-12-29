@@ -96,42 +96,42 @@ func getExpirationTime(ttl uint32) time.Time {
 
 type AddCallbackCommand struct {
 	Service msg.Service
-	UUID    string // callback uuid
+	Callback msg.Callback
 }
 
-func NewAddCallbackCommand(s msg.Service, uuid string) *AddCallbackCommand {
-	return &AddCallbackCommand{s, uuid}
+func NewAddCallbackCommand(s msg.Service, c msg.Callback) *AddCallbackCommand {
+	return &AddCallbackCommand{s, c}
 }
 
 func (c *AddCallbackCommand) CommandName() string { return "add-callback" }
 
 func (c *AddCallbackCommand) Apply(server raft.Server) (interface{}, error) {
 	reg := server.Context().(registry.Registry)
-	err := reg.AddCallback(c.Service, c.UUID)
+	err := reg.AddCallback(c.Service, c.Callback)
 
 	if err == nil {
-		log.Println("Added Callback:", c.Service, c.UUID)
+		log.Println("Added Callback:", c.Service, c.Callback)
 	}
 	return c.Service, err
 }
 
 type RemoveCallbackCommand struct {
 	Service msg.Service
-	UUID    string // callback uuid
+	Callback msg.Callback
 }
 
-func NewRemoveCallbackCommand(s msg.Service, uuid string) *RemoveCallbackCommand {
-	return &RemoveCallbackCommand{s, uuid}
+func NewRemoveCallbackCommand(s msg.Service, c msg.Callback) *RemoveCallbackCommand {
+	return &RemoveCallbackCommand{s, c}
 }
 
 func (c *RemoveCallbackCommand) CommandName() string { return "remove-callback" }
 
 func (c *RemoveCallbackCommand) Apply(server raft.Server) (interface{}, error) {
 	reg := server.Context().(registry.Registry)
-	err := reg.RemoveCallback(c.Service, c.UUID)
+	err := reg.RemoveCallback(c.Service, c.Callback)
 
 	if err == nil {
-		log.Println("Removed Callback:", c.Service, c.UUID)
+		log.Println("Removed Callback:", c.Service, c.Callback)
 	}
 	return c.Service, err
 }
