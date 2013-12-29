@@ -93,3 +93,9 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 	}
 	w.WriteHeader(http.StatusCreated)
 }
+
+// Call the callback and perform the HTTP request
+func (c *Callback) Call() error {
+	log.Println("Performing callback to:", c.Reply, c.Port)
+	return nil
+}
