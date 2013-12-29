@@ -74,6 +74,8 @@ A callback stays active, until it is deleted (TODO(miek): yes/no?).
 This will result in the call back being sent to `web2.example.nl` on port 5441.
 
 TODO(miek): Deleting callbacks?
+TODO(miek): Callbacks will be deleted when all services are removed. However when a service
+    is readded, the callback will not be called (because there is none)...
 
 ##Discovery (DNS)
 You can find services by querying SkyDNS via any DNS client or utility. It uses a known domain syntax with wildcards to find matching services.
