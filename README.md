@@ -162,7 +162,7 @@ This is where we've changed things up a bit, notice we used the "*" wildcard for
 	;; ANSWER SECTION:
 	east.*.testservice.production.skydns.local. 531  IN SRV	10 50 80   web1.site.com.
 	east.*.testservice.production.skydns.local. 3881 IN SRV	10 50 8080 web2.site.com.
-	east.*n.testservice.production.skydns.local. 3531 IN SRV	20 33 9000 server24.
+	east.*.testservice.production.skydns.local. 3531 IN SRV	20 33 9000 server24.
 	east.*.testservice.production.skydns.local. 3887 IN SRV	20 33 80   web3.site.com.
 	east.*.testservice.production.skydns.local. 3892 IN SRV	20 33 80   web4.site.com.
 
