@@ -1,14 +1,9 @@
 package server
 
 import (
-	//	"bytes"
 	"encoding/json"
-	//	"errors"
-	//	"fmt"
 	"github.com/goraft/raft"
 	"github.com/gorilla/mux"
-	//	"github.com/miekg/dns"
-	//	"github.com/rcrowley/go-metrics"
 	"github.com/skynetservices/skydns/msg"
 	"github.com/skynetservices/skydns/registry"
 	"log"
@@ -95,7 +90,9 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 }
 
 // Call the callback and perform the HTTP request
-func (c *Callback) Call() {
+func (c *Callback) Call(s msg.Service) {
+	// http.NewRequest(DELETE, urlStr, body)
+	// create request from s.
 	log.Println("Performing callback to:", c.Reply, c.Port)
 	return
 }

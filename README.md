@@ -65,17 +65,19 @@ Currently you may only retrieve a service's info by UUID of the service, in the 
 
 ### Call backs
 Registering a call back is similar to registering a service.
-A service that registered a call back will receive an HTTP (TODO(miek): where what how
-exactly?). Every time something changes in the service: the callback is executed.
-A callback stays active, until it is deleted (TODO(miek): yes/no?).
+A service that registers a call back will receive an HTTP request.
+Every time something changes in the service: the callback is executed, currently
+they are called when the service is deleted.
 
 `curl -X PUT -L http://localhost:8080/skydns/callbacks/1001 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"web1.site.com",Reply:"web2.example.nl","Port":5441}'`
 
-This will result in the call back being sent to `web2.example.nl` on port 5441.
+This will result in the call back being sent to `web2.example.nl` on port 5441. The
+callback itself will be a HTTP DELETE:
 
-TODO(miek): Deleting callbacks?
+`curl -X DELETE -L http://web2.example.nl:5441/skydns/callbacks/1001` d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"web1.site.com}'`
+
 TODO(miek): Callbacks will be deleted when all services are removed. However when a service
-    is readded, the callback will not be called (because there is none)...
+    is re-added, the callback will not be called (because there is none)...
 
 ##Discovery (DNS)
 You can find services by querying SkyDNS via any DNS client or utility. It uses a known domain syntax with wildcards to find matching services.
