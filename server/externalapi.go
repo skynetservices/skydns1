@@ -19,7 +19,7 @@ func (s *Server) getRegionsHTTPHandler(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	srv, err := s.registry.Get("any")
+	srv, err := s.registry.Get("*")
 	if err != nil {
 		switch err {
 		case registry.ErrNotExists:
@@ -59,7 +59,7 @@ func (s *Server) getEnvironmentsHTTPHandler(w http.ResponseWriter, req *http.Req
 		return
 	}
 
-	srv, err := s.registry.Get("any")
+	srv, err := s.registry.Get("*")
 	if err != nil {
 		switch err {
 		case registry.ErrNotExists:
@@ -104,7 +104,7 @@ func (s *Server) getServicesHTTPHandler(w http.ResponseWriter, req *http.Request
 	var q string
 
 	if q = req.URL.Query().Get("query"); q == "" {
-		q = "any"
+		q = "*"
 	}
 
 	log.Println("Retrieving All Services for query", q)
