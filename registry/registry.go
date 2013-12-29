@@ -96,6 +96,12 @@ func (r *DefaultRegistry) removeService(s msg.Service) error {
 	// because this means, we just removed a bad service entry.
 	// Map deletion is also a no-op, if entry not found in map
 	delete(r.nodes, s.UUID)
+	// No matter what, call the callbacks
+	go func() {
+		for _, c := range s.Callback {
+			c.Call()
+		}
+	}()
 
 	// TODO: Validate service has correct values, and getRegistryKey returns a valid value
 	k := getRegistryKey(s)
