@@ -91,7 +91,7 @@ func getExpirationTime(ttl uint32) time.Time {
 }
 
 type AddCallbackCommand struct {
-	Service msg.Service
+	Service  msg.Service
 	Callback msg.Callback
 }
 
@@ -112,7 +112,7 @@ func (c *AddCallbackCommand) Apply(server raft.Server) (interface{}, error) {
 }
 
 type RemoveCallbackCommand struct {
-	Service msg.Service
+	Service  msg.Service
 	Callback msg.Callback
 }
 

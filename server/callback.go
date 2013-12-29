@@ -56,7 +56,7 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 	}
 
 	cb.UUID = uuid
-	// We don't care about the other values once we have the 
+	// We don't care about the other values once we have the
 	// key, set them to zero to save some memory.
 
 	// Lookup the service(s)
