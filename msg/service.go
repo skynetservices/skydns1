@@ -14,7 +14,7 @@ type Service struct {
 	Port        uint16
 	TTL         uint32 // Seconds
 	Expires     time.Time
-	Callback    map[string]bool `json:"-"` // Callbacks are found by UUID
+	Callback    map[string]*Callback `json:"-"` // Callbacks are found by UUID
 }
 
 // Returns the amount of time remaining before expiration

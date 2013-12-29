@@ -22,8 +22,8 @@ type Registry interface {
 	Remove(s msg.Service) error
 	RemoveUUID(uuid string) error
 	UpdateTTL(uuid string, ttl uint32, expires time.Time) error
-	AddCallback(s msg.Service, uuid string) error
-	RemoveCallback(s msg.Service, uuid string) error
+	AddCallback(s msg.Service, c msg.Callback) error
+	RemoveCallback(s msg.Service, c msg.Callback) error
 	Len() int
 }
 
@@ -181,23 +181,23 @@ func (r *DefaultRegistry) GetExpired() (uuids []string) {
 	return
 }
 
-func (r *DefaultRegistry) AddCallback(s msg.Service, uuid string) error {
+func (r *DefaultRegistry) AddCallback(s msg.Service, c msg.Callback) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	if n, ok := r.nodes[uuid]; ok {
-		n.value.Callback[uuid] = true
+	if n, ok := r.nodes[c.UUID]; ok {
+		n.value.Callback[c.UUID] = &c
 		return nil
 	}
 	return ErrNotExists
 }
 
-func (r *DefaultRegistry) RemoveCallback(s msg.Service, uuid string) error {
+func (r *DefaultRegistry) RemoveCallback(s msg.Service, c msg.Callback) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	if n, ok := r.nodes[uuid]; ok {
-		delete(n.value.Callback, uuid)
+	if n, ok := r.nodes[c.UUID]; ok {
+		delete(n.value.Callback, c.UUID)
 		return nil
 	}
 	return ErrNotExists
