@@ -123,6 +123,8 @@ func NewServer(members []string, domain string, dnsAddr string, httpAddr string,
 	s.router.HandleFunc("/skydns/services/{uuid}", s.removeServiceHTTPHandler).Methods("DELETE")
 	s.router.HandleFunc("/skydns/services/{uuid}", s.updateServiceHTTPHandler).Methods("PATCH")
 
+	s.router.HandleFunc("/skydns/callbacks/{uuid}", s.addCallbackHTTPHandler).Methods("PUT")
+
 	// External API Routes
 	// /skydns/services #list all services
 	s.router.HandleFunc("/skydns/services/", s.getServicesHTTPHandler).Methods("GET")
