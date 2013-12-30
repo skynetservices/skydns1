@@ -360,7 +360,7 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	log.Printf("Received DNS Request for %q from %q", q.Name, w.RemoteAddr())
 
 	if q.Qtype == dns.TypeANY || q.Qtype == dns.TypeSRV {
-		records, err := s.getSRVRecords(q)
+		records, extra, err := s.getSRVRecords(q)
 
 		if err != nil {
 			m.SetRcode(req, dns.RcodeServerFailure)
@@ -369,6 +369,7 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		}
 
 		m.Answer = append(m.Answer, records...)
+		m.Extra = append(m.Extra, extra...)
 	}
 
 	if q.Qtype == dns.TypeANY || q.Qtype == dns.TypeA {
@@ -414,7 +415,7 @@ func (s *Server) getARecords(q dns.Question) (records []dns.RR, err error) {
 	return
 }
 
-func (s *Server) getSRVRecords(q dns.Question) (records []dns.RR, err error) {
+func (s *Server) getSRVRecords(q dns.Question) (records []dns.RR, extra []dns.RR, err error) {
 	var weight uint16
 	services := make([]msg.Service, 0)
 
@@ -432,7 +433,27 @@ func (s *Server) getSRVRecords(q dns.Question) (records []dns.RR, err error) {
 
 	for _, serv := range services {
 		// TODO: Dynamically set weight
-		records = append(records, &dns.SRV{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeSRV, Class: dns.ClassINET, Ttl: serv.TTL}, Priority: 10, Weight: weight, Port: serv.Port, Target: serv.Host + "."})
+		// a Service may have an IP as its Host"name", in this case
+		// substitute UUID + "." + s.domain+"." an add an A record
+		// with the name and IP in the additional section.
+		// TODO(miek): check if resolvers actually grok this
+		ip := net.ParseIP(serv.Host)
+		switch {
+		case ip == nil:
+			records = append(records, &dns.SRV{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeSRV, Class: dns.ClassINET, Ttl: serv.TTL},
+				Priority: 10, Weight: weight, Port: serv.Port, Target: serv.Host + "."})
+			continue
+		case len(ip) == 4:
+			extra = append(extra, &dns.A{Hdr: dns.RR_Header{Name: serv.UUID + "." + s.domain + ".", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: serv.TTL}, A: ip})
+			records = append(records, &dns.SRV{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeSRV, Class: dns.ClassINET, Ttl: serv.TTL},
+				Priority: 10, Weight: weight, Port: serv.Port, Target: serv.UUID + "." + s.domain + "."})
+		case len(ip) == 16:
+			extra = append(extra, &dns.AAAA{Hdr: dns.RR_Header{Name: serv.UUID + "." + s.domain + ".", Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: serv.TTL}, AAAA: ip})
+			records = append(records, &dns.SRV{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeSRV, Class: dns.ClassINET, Ttl: serv.TTL},
+				Priority: 10, Weight: weight, Port: serv.Port, Target: serv.UUID + "." + s.domain + "."})
+		default:
+			panic("skydns: internal error")
+		}
 	}
 
 	// Append matching entries in different region than requested with a higher priority
@@ -463,10 +484,26 @@ func (s *Server) getSRVRecords(q dns.Question) (records []dns.RR, err error) {
 				continue
 			}
 			// TODO: Dynamically set priority and weight
-			records = append(records, &dns.SRV{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeSRV, Class: dns.ClassINET, Ttl: serv.TTL}, Priority: 20, Weight: weight, Port: serv.Port, Target: serv.Host + "."})
+			// TODO(miek): same as above: abstract away
+			ip := net.ParseIP(serv.Host)
+			switch {
+			case ip == nil:
+				records = append(records, &dns.SRV{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeSRV, Class: dns.ClassINET, Ttl: serv.TTL},
+					Priority: 10, Weight: weight, Port: serv.Port, Target: serv.Host + "."})
+				continue
+			case len(ip) == 4:
+				extra = append(extra, &dns.A{Hdr: dns.RR_Header{Name: serv.UUID + "." + s.domain + ".", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: serv.TTL}, A: ip})
+				records = append(records, &dns.SRV{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeSRV, Class: dns.ClassINET, Ttl: serv.TTL},
+					Priority: 10, Weight: weight, Port: serv.Port, Target: serv.UUID + "." + s.domain + "."})
+			case len(ip) == 16:
+				extra = append(extra, &dns.AAAA{Hdr: dns.RR_Header{Name: serv.UUID + "." + s.domain + ".", Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: serv.TTL}, AAAA: ip})
+				records = append(records, &dns.SRV{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeSRV, Class: dns.ClassINET, Ttl: serv.TTL},
+					Priority: 10, Weight: weight, Port: serv.Port, Target: serv.UUID + "." + s.domain + "."})
+			default:
+				panic("skydns: internal error")
+			}
 		}
 	}
-
 	return
 }
 
