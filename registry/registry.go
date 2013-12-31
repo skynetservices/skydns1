@@ -31,7 +31,7 @@ type Registry interface {
 	Len() int
 }
 
-// Creates a new DefaultRegistry
+// New creates a new DefaultRegistry.
 func New() Registry {
 	return &DefaultRegistry{
 		tree:  newNode(),
@@ -46,7 +46,7 @@ type DefaultRegistry struct {
 	mutex sync.Mutex
 }
 
-// Add service to registry
+// Add adds a service to registry.
 func (r *DefaultRegistry) Add(s msg.Service) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -57,17 +57,14 @@ func (r *DefaultRegistry) Add(s msg.Service) error {
 	}
 
 	k := getRegistryKey(s)
-
 	n, err := r.tree.add(strings.Split(k, "."), s)
-
 	if err == nil {
 		r.nodes[n.value.UUID] = n
 	}
-
 	return err
 }
 
-// Remove Service specified by UUID
+// Remove removes Service specified by UUID from the registry.
 func (r *DefaultRegistry) RemoveUUID(uuid string) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -75,11 +72,10 @@ func (r *DefaultRegistry) RemoveUUID(uuid string) error {
 	if n, ok := r.nodes[uuid]; ok {
 		return r.removeService(n.value)
 	}
-
 	return ErrNotExists
 }
 
-// Updates the TTL of a service, as well as pushes the expiration time out TTL seconds from now.
+// UpdateTTL updates the TTL of a service, as well as pushes the expiration time out TTL seconds from now.
 // This serves as a ping, for the service to keep SkyDNS aware of it's existence so that it is not expired, and purged.
 func (r *DefaultRegistry) UpdateTTL(uuid string, ttl uint32, expires time.Time) error {
 	r.mutex.Lock()
@@ -114,7 +110,7 @@ func (r *DefaultRegistry) removeService(s msg.Service) error {
 	return r.tree.remove(strings.Split(k, "."))
 }
 
-// Remove service from registry
+// Removes removes a service from registry.
 func (r *DefaultRegistry) Remove(s msg.Service) (err error) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -125,7 +121,7 @@ func (r *DefaultRegistry) Remove(s msg.Service) (err error) {
 	return ErrNotExists
 }
 
-// Retrieve a service based on it's UUID
+// GetUUID retrieves a service based on its UUID.
 func (r *DefaultRegistry) GetUUID(uuid string) (s msg.Service, err error) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -174,7 +170,7 @@ func (r *DefaultRegistry) Get(domain string) ([]msg.Service, error) {
 	return r.tree.get(tree)
 }
 
-// Returns a slice of expired UUIDs
+// GetExpired returns a slice of expired UUIDs.
 func (r *DefaultRegistry) GetExpired() (uuids []string) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -190,6 +186,7 @@ func (r *DefaultRegistry) GetExpired() (uuids []string) {
 	return
 }
 
+// AddCallback adds a callback to a service.
 func (r *DefaultRegistry) AddCallback(s msg.Service, c msg.Callback) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
