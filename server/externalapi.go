@@ -130,5 +130,4 @@ func (s *Server) getServicesHTTPHandler(w http.ResponseWriter, req *http.Request
 	var b bytes.Buffer
 	json.NewEncoder(&b).Encode(srv)
 	w.Write(b.Bytes())
-
 }
