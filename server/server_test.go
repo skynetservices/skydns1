@@ -368,6 +368,34 @@ func TestAuthenticationSuccess(t *testing.T) {
 	}
 }
 
+func TestHostFailure(t *testing.T) {
+	s := newTestServer("", 9610, 9611, "")
+	defer s.Stop()
+
+	m := msg.Service{
+		Name:        "TestService",
+		Version:     "1.0.0",
+		Region:      "Test",
+		Environment: "Production",
+		Port:        9000,
+		TTL:         4,
+	}
+
+	b, err := json.Marshal(m)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req, _ := http.NewRequest("PUT", "/skydns/services/123", bytes.NewBuffer(b))
+	resp := httptest.NewRecorder()
+
+	s.router.ServeHTTP(resp, req)
+	if resp.Code != http.StatusBadRequest {
+		t.Fatal("Failed to detect empty Host.")
+	}
+}
+
 var services = []msg.Service{
 	{
 		UUID:        "100",
