@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-// Handle API add callback requests
+// Handle API add callback requests.
 func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 
