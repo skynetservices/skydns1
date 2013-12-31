@@ -145,7 +145,6 @@ func (r *DefaultRegistry) GetUUID(uuid string) (s msg.Service, err error) {
  * and will assume "*" for all the ommited subdomain positions
  */
 func (r *DefaultRegistry) Get(domain string) ([]msg.Service, error) {
-	println("Domain Get", domain)
 	// TODO: account for version wildcards
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
