@@ -6,6 +6,8 @@ package msg
 
 import (
 	"log"
+	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -54,9 +56,15 @@ type Callback struct {
 
 // Call calls the callback and performs the HTTP request.
 func (c Callback) Call(s Service) {
-	// TODO(miek): actually implement this
-	// http.NewRequest(DELETE, urlStr, body)
-	// create request from s.
-	log.Println("Performing callback to:", c.Reply, c.Port)
+	go func() {
+		log.Println("Performing callback to:", c.Reply, c.Port)
+		// TODO(miek): Use DELETE as mentioned in the README
+		resp, err := http.Get("http://" + c.Reply + ":" + strconv.Itoa(int(c.Port)) + "/skydns/callbacks/" + c.UUID)
+		if err != nil {
+			return
+		}
+		defer resp.Body.Close()
+		return
+	}()
 	return
 }
