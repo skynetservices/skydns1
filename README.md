@@ -74,7 +74,7 @@ they are called when the service is deleted.
 This will result in the call back being sent to `web2.example.nl` on port 5441. The
 callback itself will be a HTTP DELETE:
 
-`curl -X DELETE -L http://web2.example.nl:5441/skydns/callbacks/1001` d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"web1.site.com}'`
+`curl -X DELETE -L http://web2.example.nl:5441/skydns/callbacks/1001` -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"web1.site.com}'`
 
 TODO(miek): Callbacks will be deleted when all services are removed. However when a service
     is re-added, the callback will not be called (because there is none)...
