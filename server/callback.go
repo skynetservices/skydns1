@@ -64,6 +64,7 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 			case registry.ErrNotExists:
 				notExists++
 				saveErr = err
+				continue
 			case raft.NotLeaderError:
 				s.redirectToLeader(w, req)
 				return
@@ -73,6 +74,7 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 				return
 			}
 		}
+		log.Println("Added Callback", cb, "for", serv.UUID)
 	}
 	if notExists == len(services) {
 		http.Error(w, saveErr.Error(), http.StatusNotFound)
