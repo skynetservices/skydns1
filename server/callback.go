@@ -8,6 +8,7 @@ import (
 	"github.com/skynetservices/skydns/registry"
 	"log"
 	"net/http"
+	"strings"
 )
 
 // Handle API add callback requests.
@@ -39,13 +40,12 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 
 	cb.UUID = uuid
 	// Lookup the service(s)
-	// TODO: getRegistryKey(s) isn't exported, or what should I (miek)
-	//  use to go from string to a domain.
-	// TODO: version is thus not correctly formatted
-	key := cb.Name + "." + cb.Version + "." + cb.Environment + "." + cb.Region +
-		"." + cb.Host
+	// TODO: this should be a function call (or method)
+	key := cb.Region + "." + strings.Replace(cb.Version, ".", "-", -1) + "." + cb.Name + "." + cb.Environment
+	key = strings.ToLower(key)
 	services, err := s.registry.Get(key)
 	if err != nil || len(services) == 0 {
+		log.Println("Service not found for callback", key)
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
@@ -57,11 +57,13 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 	cb.Host = ""
 
 	notExists := 0
+	var saveErr error
 	for _, serv := range services {
 		if _, err := s.raftServer.Do(NewAddCallbackCommand(serv, cb)); err != nil {
 			switch err {
 			case registry.ErrNotExists:
 				notExists++
+				saveErr = err
 			case raft.NotLeaderError:
 				s.redirectToLeader(w, req)
 				return
@@ -72,8 +74,8 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 			}
 		}
 	}
-	if notExists == len(services) - 1 {
-		http.Error(w, err.Error(), http.StatusNotFound)
+	if notExists == len(services) {
+		http.Error(w, saveErr.Error(), http.StatusNotFound)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)

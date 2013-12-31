@@ -436,8 +436,8 @@ func TestCallback(t *testing.T) {
 	resp = httptest.NewRecorder()
 
 	s.router.ServeHTTP(resp, req)
-	if resp.Code != http.StatusOK {
-		t.Fatal("Failed to perform callback.")
+	if resp.Code != http.StatusCreated {
+		t.Fatalf("Failed to perform callback: %d", resp.Code)
 	}
 }
 
