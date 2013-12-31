@@ -58,12 +58,12 @@ type Callback struct {
 func (c Callback) Call(s Service) {
 	go func() {
 		log.Println("Performing callback to:", c.Reply, c.Port)
-		// TODO(miek): Use DELETE as mentioned in the README
+		// TODO(miek): Use DELETE with some data
 		resp, err := http.Get("http://" + c.Reply + ":" + strconv.Itoa(int(c.Port)) + "/skydns/callbacks/" + c.UUID)
 		if err != nil {
 			return
 		}
-		defer resp.Body.Close()
+		resp.Body.Close()
 		return
 	}()
 	return
