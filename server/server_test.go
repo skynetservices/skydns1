@@ -479,12 +479,10 @@ func TestCallbackFailure(t *testing.T) {
 	resp = httptest.NewRecorder()
 
 	s.router.ServeHTTP(resp, req)
-	if resp.Code != http.StatusOK {
+	if resp.Code != http.StatusNotFound {
 		t.Fatal("Failed to perform callback.")
 	}
 }
-
-// Callback failure notfound
 
 var services = []msg.Service{
 	{
