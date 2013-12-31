@@ -373,7 +373,7 @@ func TestAuthenticationSuccess(t *testing.T) {
 }
 
 func TestHostFailure(t *testing.T) {
-	s := newTestServer("", 9610, 9611, "")
+	s := newTestServer("", 9630, 9631, "")
 	defer s.Stop()
 
 	m := msg.Service{
