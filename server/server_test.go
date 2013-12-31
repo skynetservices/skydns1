@@ -439,6 +439,7 @@ func TestCallback(t *testing.T) {
 	if resp.Code != http.StatusCreated {
 		t.Fatalf("Failed to perform callback: %d", resp.Code)
 	}
+	// TODO(miek): check for the callback to be performed
 }
 
 func TestCallbackFailure(t *testing.T) {
