@@ -76,9 +76,9 @@ The domain syntax when querying follows a pattern where the right most positions
 - 1-0-0.authservice.production.skydns.local - Is the same as above but restricting it to only version 1.0.0
 - east.1-0-0.authservice.production.skydns.local - Would add the restriction that the services must be running in the East region
 
-In addition to only needing to specify as much of the domain as required for the granularity level you're looking for, you may also supply the wildcard **any** or **all** in any of the positions.
+In addition to only needing to specify as much of the domain as required for the granularity level you're looking for, you may also supply the wildcard `*` in any of the positions.
 
-- east.any.any.production.skydns.local - Would return all services in the East region, that are a part of the production environment.
+- east.*.*.production.skydns.local - Would return all services in the East region, that are a part of the production environment.
 
 ###Examples
 
@@ -152,19 +152,19 @@ Now we can try some of our example DNS lookups:
 	;; MSG SIZE  rcvd: 346
 	
 #####All TestService Instances at any version, within the East region
-`dig @localhost east.any.testservice.production.skydns.local SRV`
+`dig @localhost east.*.testservice.production.skydns.local SRV`
 
-This is where we've changed things up a bit, notice we used the "any" wildcard for version so we get any version, and because we've supplied an explicit region that we're looking for we get that as the highest DNS priority, with the weight being distributed evenly, then all of our West instances still show up for fail-over, but with a higher Priority.
+This is where we've changed things up a bit, notice we used the "*" wildcard for version so we get any version, and because we've supplied an explicit region that we're looking for we get that as the highest DNS priority, with the weight being distributed evenly, then all of our West instances still show up for fail-over, but with a higher Priority.
 
 	;; QUESTION SECTION:
-	;east.any.testservice.production.skydns.local. IN	SRV
+	;east.*.testservice.production.skydns.local. IN	SRV
 
 	;; ANSWER SECTION:
-	east.any.testservice.production.skydns.local. 531  IN SRV	10 50 80   web1.site.com.
-	east.any.testservice.production.skydns.local. 3881 IN SRV	10 50 8080 web2.site.com.
-	east.any.testservice.production.skydns.local. 3531 IN SRV	20 33 9000 server24.
-	east.any.testservice.production.skydns.local. 3887 IN SRV	20 33 80   web3.site.com.
-	east.any.testservice.production.skydns.local. 3892 IN SRV	20 33 80   web4.site.com.
+	east.*.testservice.production.skydns.local. 531  IN SRV	10 50 80   web1.site.com.
+	east.*.testservice.production.skydns.local. 3881 IN SRV	10 50 8080 web2.site.com.
+	east.*.testservice.production.skydns.local. 3531 IN SRV	20 33 9000 server24.
+	east.*.testservice.production.skydns.local. 3887 IN SRV	20 33 80   web3.site.com.
+	east.*.testservice.production.skydns.local. 3892 IN SRV	20 33 80   web4.site.com.
 
 	;; Query time: 0 msec
 	;; SERVER: 127.0.0.1#53(127.0.0.1)

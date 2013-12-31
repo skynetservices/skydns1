@@ -435,9 +435,9 @@ func (s *Server) getSRVRecords(q dns.Question) (records []dns.RR, err error) {
 	labels := dns.SplitDomainName(key)
 
 	pos := len(labels) - 4
-	if len(labels) >= 4 && labels[pos] != "any" && labels[pos] != "all" {
+	if len(labels) >= 4 && labels[pos] != "*" {
 		region := labels[pos]
-		labels[pos] = "any"
+		labels[pos] = "*"
 
 		// TODO: This is pretty much a copy of the above, and should be abstracted
 		additionalServices := make([]msg.Service, len(services))

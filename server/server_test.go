@@ -496,11 +496,11 @@ var dnsTestCases = []dnsTestCase{
 
 	// Region Priority Test
 	{
-		Question: "region1.any.testservice.production.skydns.local.",
+		Question: "region1.*.testservice.production.skydns.local.",
 		Answer: []dns.SRV{
 			{
 				Hdr: dns.RR_Header{
-					Name:   "region1.any.testservice.production.skydns.local.",
+					Name:   "region1.*.testservice.production.skydns.local.",
 					Ttl:    30,
 					Rrtype: dns.TypeSRV,
 				},
@@ -511,7 +511,7 @@ var dnsTestCases = []dnsTestCase{
 			},
 			{
 				Hdr: dns.RR_Header{
-					Name:   "region1.any.testservice.production.skydns.local.",
+					Name:   "region1.*.testservice.production.skydns.local.",
 					Ttl:    33,
 					Rrtype: dns.TypeSRV,
 				},
@@ -522,7 +522,7 @@ var dnsTestCases = []dnsTestCase{
 			},
 			{
 				Hdr: dns.RR_Header{
-					Name:   "region1.any.testservice.production.skydns.local.",
+					Name:   "region1.*.testservice.production.skydns.local.",
 					Ttl:    34,
 					Rrtype: dns.TypeSRV,
 				},
@@ -541,11 +541,11 @@ type servicesTest struct {
 }
 
 var serviceTestArray []servicesTest = []servicesTest{
-	{"any", 7},
+	{"*", 7},
 	{"production", 5},
 	{"testservice.production", 3},
-	{"region1.any.any.production", 1},
-	{"region1.any.testservice.production", 1},
+	{"region1.*.*.production", 1},
+	{"region1.*.testservice.production", 1},
 }
 
 func TestGetServicesWithQueries(t *testing.T) {
