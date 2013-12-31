@@ -480,7 +480,7 @@ func TestCallbackFailure(t *testing.T) {
 
 	s.router.ServeHTTP(resp, req)
 	if resp.Code != http.StatusNotFound {
-		t.Fatal("Failed to perform callback.")
+		t.Fatal("Callback should result in service not found.")
 	}
 }
 
