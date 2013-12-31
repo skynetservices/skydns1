@@ -195,7 +195,7 @@ func (r *DefaultRegistry) AddCallback(s msg.Service, c msg.Callback) error {
 	defer r.mutex.Unlock()
 
 	if n, ok := r.nodes[c.UUID]; ok {
-		n.value.Callback[c.UUID] = &c
+		n.value.Callback[c.UUID] = c
 		return nil
 	}
 	return ErrNotExists
