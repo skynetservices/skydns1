@@ -545,6 +545,10 @@ func (s *Server) addServiceHTTPHandler(w http.ResponseWriter, req *http.Request)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if serv.Host == "" || serv.Port == 0 {
+		http.Error(w, "Host and Port required", http.StatusBadRequest)
+		return
+	}
 
 	serv.UUID = uuid
 
