@@ -386,11 +386,9 @@ func TestHostFailure(t *testing.T) {
 	}
 
 	b, err := json.Marshal(m)
-
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	req, _ := http.NewRequest("PUT", "/skydns/services/123", bytes.NewBuffer(b))
 	resp := httptest.NewRecorder()
 
@@ -399,6 +397,51 @@ func TestHostFailure(t *testing.T) {
 		t.Fatal("Failed to detect empty Host.")
 	}
 }
+
+func TestCallback(t *testing.T) {
+	s := newTestServer("", 9640, 9641, "")
+	defer s.Stop()
+
+	m := msg.Service{
+		Name:        "TestService",
+		Version:     "1.0.0",
+		Region:      "Test",
+		Environment: "Production",
+		Host:	     "localhost",
+		Port:        9000,
+		TTL:         4,
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, _ := http.NewRequest("PUT", "/skydns/services/123", bytes.NewBuffer(b))
+	resp := httptest.NewRecorder()
+	s.router.ServeHTTP(resp, req)
+
+	c := msg.Callback{
+		Name:        "TestService",
+		Version:     "1.0.0",
+		Region:      "Test",
+		Environment: "Production",
+		Host:	     "localhost",
+		Reply:	     "localhost",
+		Port:	     9650,
+	}
+	b, err = json.Marshal(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, _ = http.NewRequest("PUT", "/skydns/callbacks/101", bytes.NewBuffer(b))
+	resp = httptest.NewRecorder()
+
+	s.router.ServeHTTP(resp, req)
+	if resp.Code != http.StatusOK {
+		t.Fatal("Failed to perform callback.")
+	}
+}
+
+// Callback failure notfound
 
 var services = []msg.Service{
 	{
