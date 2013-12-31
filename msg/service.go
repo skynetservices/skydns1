@@ -52,7 +52,6 @@ type Callback struct {
 	Port  uint16
 }
 
-
 // Call calls the callback and performs the HTTP request.
 func (c Callback) Call(s Service) {
 	// TODO(miek): actually implement this
