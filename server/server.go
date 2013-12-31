@@ -123,6 +123,8 @@ func NewServer(members []string, domain string, dnsAddr string, httpAddr string,
 	s.router.HandleFunc("/skydns/services/{uuid}", s.removeServiceHTTPHandler).Methods("DELETE")
 	s.router.HandleFunc("/skydns/services/{uuid}", s.updateServiceHTTPHandler).Methods("PATCH")
 
+	s.router.HandleFunc("/skydns/callbacks/{uuid}", s.addCallbackHTTPHandler).Methods("PUT")
+
 	// External API Routes
 	// /skydns/services #list all services
 	s.router.HandleFunc("/skydns/services/", s.getServicesHTTPHandler).Methods("GET")
@@ -489,16 +491,16 @@ func (s *Server) getSRVRecords(q dns.Question) (records []dns.RR, extra []dns.RR
 			switch {
 			case ip == nil:
 				records = append(records, &dns.SRV{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeSRV, Class: dns.ClassINET, Ttl: serv.TTL},
-					Priority: 10, Weight: weight, Port: serv.Port, Target: serv.Host + "."})
+					Priority: 20, Weight: weight, Port: serv.Port, Target: serv.Host + "."})
 				continue
 			case ip.To4() != nil:
 				extra = append(extra, &dns.A{Hdr: dns.RR_Header{Name: serv.UUID + "." + s.domain + ".", Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: serv.TTL}, A: ip.To4()})
 				records = append(records, &dns.SRV{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeSRV, Class: dns.ClassINET, Ttl: serv.TTL},
-					Priority: 10, Weight: weight, Port: serv.Port, Target: serv.UUID + "." + s.domain + "."})
+					Priority: 20, Weight: weight, Port: serv.Port, Target: serv.UUID + "." + s.domain + "."})
 			case ip.To16() != nil:
 				extra = append(extra, &dns.AAAA{Hdr: dns.RR_Header{Name: serv.UUID + "." + s.domain + ".", Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: serv.TTL}, AAAA: ip.To16()})
 				records = append(records, &dns.SRV{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeSRV, Class: dns.ClassINET, Ttl: serv.TTL},
-					Priority: 10, Weight: weight, Port: serv.Port, Target: serv.UUID + "." + s.domain + "."})
+					Priority: 20, Weight: weight, Port: serv.Port, Target: serv.UUID + "." + s.domain + "."})
 			default:
 				panic("skydns: internal error")
 			}

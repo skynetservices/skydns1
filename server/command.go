@@ -25,9 +25,7 @@ func NewAddServiceCommand(s msg.Service) *AddServiceCommand {
 }
 
 // Name of command
-func (c *AddServiceCommand) CommandName() string {
-	return "add-service"
-}
+func (c *AddServiceCommand) CommandName() string { return "add-service" }
 
 // Adds service to registry
 func (c *AddServiceCommand) Apply(server raft.Server) (interface{}, error) {
@@ -53,9 +51,7 @@ func NewUpdateTTLCommand(uuid string, ttl uint32) *UpdateTTLCommand {
 }
 
 // Name of command
-func (c *UpdateTTLCommand) CommandName() string {
-	return "update-ttl"
-}
+func (c *UpdateTTLCommand) CommandName() string { return "update-ttl" }
 
 // Updates TTL in registry
 func (c *UpdateTTLCommand) Apply(server raft.Server) (interface{}, error) {
@@ -79,11 +75,9 @@ func NewRemoveServiceCommand(uuid string) *RemoveServiceCommand {
 }
 
 // Name of command
-func (c *RemoveServiceCommand) CommandName() string {
-	return "remove-service"
-}
+func (c *RemoveServiceCommand) CommandName() string { return "remove-service" }
 
-// Updates TTL in registry
+// Removes service from the registry
 func (c *RemoveServiceCommand) Apply(server raft.Server) (interface{}, error) {
 
 	reg := server.Context().(registry.Registry)
@@ -98,4 +92,25 @@ func (c *RemoveServiceCommand) Apply(server raft.Server) (interface{}, error) {
 
 func getExpirationTime(ttl uint32) time.Time {
 	return time.Now().Add(time.Duration(ttl) * time.Second)
+}
+
+type AddCallbackCommand struct {
+	Service  msg.Service
+	Callback msg.Callback
+}
+
+func NewAddCallbackCommand(s msg.Service, c msg.Callback) *AddCallbackCommand {
+	return &AddCallbackCommand{s, c}
+}
+
+func (c *AddCallbackCommand) CommandName() string { return "add-callback" }
+
+func (c *AddCallbackCommand) Apply(server raft.Server) (interface{}, error) {
+	reg := server.Context().(registry.Registry)
+	err := reg.AddCallback(c.Service, c.Callback)
+
+	if err == nil {
+		log.Println("Added Callback:", c.Service, c.Callback)
+	}
+	return c.Service, err
 }

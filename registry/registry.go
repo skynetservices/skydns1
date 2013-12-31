@@ -27,6 +27,7 @@ type Registry interface {
 	Remove(s msg.Service) error
 	RemoveUUID(uuid string) error
 	UpdateTTL(uuid string, ttl uint32, expires time.Time) error
+	AddCallback(s msg.Service, c msg.Callback) error
 	Len() int
 }
 
@@ -94,13 +95,18 @@ func (r *DefaultRegistry) UpdateTTL(uuid string, ttl uint32, expires time.Time) 
 	return ErrNotExists
 }
 
-
 // Remove service from registry while r.mutex is held
 func (r *DefaultRegistry) removeService(s msg.Service) error {
 	// we can always delete, even if r.tree reports it doesn't exist,
-	// because this means, we just removed a bad service entry. 
+	// because this means, we just removed a bad service entry.
 	// Map deletion is also a no-op, if entry not found in map
 	delete(r.nodes, s.UUID)
+	// No matter what, call the callbacks
+	go func() {
+		for _, c := range s.Callback {
+			c.Call(s)
+		}
+	}()
 
 	// TODO: Validate service has correct values, and getRegistryKey returns a valid value
 	k := getRegistryKey(s)
@@ -182,6 +188,17 @@ func (r *DefaultRegistry) GetExpired() (uuids []string) {
 	}
 
 	return
+}
+
+func (r *DefaultRegistry) AddCallback(s msg.Service, c msg.Callback) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	if n, ok := r.nodes[c.UUID]; ok {
+		n.value.Callback[c.UUID] = c
+		return nil
+	}
+	return ErrNotExists
 }
 
 func (r *DefaultRegistry) Len() int {
