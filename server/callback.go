@@ -49,7 +49,7 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	// Reset to save memory.
+	// Reset to save memory, only used so find the services(s).
 	cb.Name = ""
 	cb.Version = ""
 	cb.Environment = ""
