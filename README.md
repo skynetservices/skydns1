@@ -125,11 +125,6 @@ Now we can try some of our example DNS lookups:
 	production.skydns.local.		3985	IN	SRV	10 20 80   web3.site.com.
 	production.skydns.local.		3990	IN	SRV	10 20 80   web4.site.com.
 
-	;; Query time: 1 msec
-	;; SERVER: 127.0.0.1#53(127.0.0.1)
-	;; WHEN: Thu Oct 10 11:47:08 EDT 2013
-	;; MSG SIZE  rcvd: 238
-	
 #####All TestService instances in Production Environment
 `dig @localhost testservice.production.skydns.local SRV`
 
@@ -143,11 +138,6 @@ Now we can try some of our example DNS lookups:
 	testservice.production.skydns.local.	3972	IN	SRV	10 20 80   web3.site.com.
 	testservice.production.skydns.local.	3976	IN	SRV	10 20 80   web4.site.com.
 
-	;; Query time: 0 msec
-	;; SERVER: 127.0.0.1#53(127.0.0.1)
-	;; WHEN: Thu Oct 10 11:47:22 EDT 2013
-	;; MSG SIZE  rcvd: 310
-	
 #####All TestService v1.0.0 Instances in Production Environment
 `dig @localhost 1-0-0.testservice.production.skydns.local SRV`
 
@@ -161,11 +151,6 @@ Now we can try some of our example DNS lookups:
 	1-0-0.testservice.production.skydns.local. 3956 IN	SRV	10 20 80   web3.site.com.
 	1-0-0.testservice.production.skydns.local. 3961 IN	SRV	10 20 80   web4.site.com.
 
-	;; Query time: 0 msec
-	;; SERVER: 127.0.0.1#53(127.0.0.1)
-	;; WHEN: Thu Oct 10 11:47:37 EDT 2013
-	;; MSG SIZE  rcvd: 346
-	
 #####All TestService Instances at any version, within the East region
 `dig @localhost east.*.testservice.production.skydns.local SRV`
 
@@ -180,11 +165,6 @@ This is where we've changed things up a bit, notice we used the "*" wildcard for
 	east.*.testservice.production.skydns.local. 3531 IN SRV	20 33 9000 server24.
 	east.*.testservice.production.skydns.local. 3887 IN SRV	20 33 80   web3.site.com.
 	east.*.testservice.production.skydns.local. 3892 IN SRV	20 33 80   web4.site.com.
-
-	;; Query time: 0 msec
-	;; SERVER: 127.0.0.1#53(127.0.0.1)
-	;; WHEN: Thu Oct 10 11:48:46 EDT 2013
-	;; MSG SIZE  rcvd: 364
 
 ## License
 The MIT License (MIT)
