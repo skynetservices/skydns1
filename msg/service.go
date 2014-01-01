@@ -56,7 +56,6 @@ type Callback struct {
 
 // Call calls the callback and performs the HTTP request.
 func (c Callback) Call(s Service) {
-	go func() {
 		log.Println("Performing callback to:", c.Reply, c.Port)
 		// TODO(miek): Use DELETE with some data
 		resp, err := http.Get("http://" + c.Reply + ":" + strconv.Itoa(int(c.Port)) + "/skydns/callbacks/" + c.UUID)
@@ -65,6 +64,4 @@ func (c Callback) Call(s Service) {
 		}
 		resp.Body.Close()
 		return
-	}()
-	return
 }
