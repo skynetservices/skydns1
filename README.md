@@ -46,6 +46,9 @@ If a service with this UUID already exists you will receive back an http status 
 
 SkyDNS will now have an entry for your service that will live for the number of seconds supplied in your TTL (10 seconds in our example), unless you send a heartbeat to update the TTL.
 
+Note that instead of a hostname you can also use an IP address (IPv4 or IPV6), in that case
+SkyDNS will make up an hostname that is used in the SRV record (defaults to UUID.skydns.local) and adds the IP adress as an A or AAAAA record in the additional section for this hostname.
+
 ### Heartbeat / Keep alive
 SkyDNS requires that services submit an HTTP request to update their TTL within the TTL they last supplied. If the service fails to do so within this timeframe SkyDNS will expire the service automatically. This will allow for nodes to fail and DNS to reflect this quickly.
 
