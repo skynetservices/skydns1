@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/miekg/dns"
 	"github.com/skynetservices/skydns/msg"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -84,10 +85,8 @@ func (r *DefaultRegistry) UpdateTTL(uuid string, ttl uint32, expires time.Time) 
 	if n, ok := r.nodes[uuid]; ok {
 		n.value.TTL = ttl
 		n.value.Expires = expires
-
 		return nil
 	}
-
 	return ErrNotExists
 }
 
@@ -98,11 +97,10 @@ func (r *DefaultRegistry) removeService(s msg.Service) error {
 	// Map deletion is also a no-op, if entry not found in map
 	delete(r.nodes, s.UUID)
 	// No matter what, call the callbacks
-	go func() {
-		for _, c := range s.Callback {
-			c.Call(s)
-		}
-	}()
+	log.Println("Calling", len(s.Callback), "callback(s) for service", s.UUID)
+	for _, c := range s.Callback {
+		c.Call(s)
+	}
 
 	// TODO: Validate service has correct values, and getRegistryKey returns a valid value
 	k := getRegistryKey(s)
@@ -191,7 +189,10 @@ func (r *DefaultRegistry) AddCallback(s msg.Service, c msg.Callback) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	if n, ok := r.nodes[c.UUID]; ok {
+	if n, ok := r.nodes[s.UUID]; ok {
+		if n.value.Callback == nil {
+			n.value.Callback = make(map[string]msg.Callback)
+		}
 		n.value.Callback[c.UUID] = c
 		return nil
 	}

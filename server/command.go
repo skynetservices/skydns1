@@ -108,7 +108,6 @@ func (c *AddCallbackCommand) CommandName() string { return "add-callback" }
 func (c *AddCallbackCommand) Apply(server raft.Server) (interface{}, error) {
 	reg := server.Context().(registry.Registry)
 	err := reg.AddCallback(c.Service, c.Callback)
-
 	if err == nil {
 		log.Println("Added Callback:", c.Service, c.Callback)
 	}

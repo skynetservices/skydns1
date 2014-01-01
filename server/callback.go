@@ -57,13 +57,11 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 	cb.Host = ""
 
 	notExists := 0
-	var saveErr error
 	for _, serv := range services {
 		if _, err := s.raftServer.Do(NewAddCallbackCommand(serv, cb)); err != nil {
 			switch err {
 			case registry.ErrNotExists:
 				notExists++
-				saveErr = err
 				continue
 			case raft.NotLeaderError:
 				s.redirectToLeader(w, req)
@@ -74,10 +72,9 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 				return
 			}
 		}
-		log.Println("Added Callback", cb, "for", serv.UUID)
 	}
 	if notExists == len(services) {
-		http.Error(w, saveErr.Error(), http.StatusNotFound)
+		http.Error(w, registry.ErrNotExists.Error(), http.StatusNotFound)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
