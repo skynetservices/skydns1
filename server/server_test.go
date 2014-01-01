@@ -407,7 +407,7 @@ func TestCallback(t *testing.T) {
 		Version:     "1.0.0",
 		Region:      "Test",
 		Environment: "Production",
-		Host:	     "localhost",
+		Host:        "localhost",
 		Port:        9000,
 		TTL:         4,
 	}
@@ -424,9 +424,9 @@ func TestCallback(t *testing.T) {
 		Version:     "1.0.0",
 		Region:      "Test",
 		Environment: "Production",
-		Host:	     "localhost",
-		Reply:	     "localhost",
-		Port:	     9650,
+		Host:        "localhost",
+		Reply:       "localhost",
+		Port:        9650,
 	}
 	b, err = json.Marshal(c)
 	if err != nil {
@@ -451,7 +451,7 @@ func TestCallbackFailure(t *testing.T) {
 		Version:     "1.0.0",
 		Region:      "Test",
 		Environment: "Production",
-		Host:	     "localhost",
+		Host:        "localhost",
 		Port:        9000,
 		TTL:         4,
 	}
@@ -468,9 +468,9 @@ func TestCallbackFailure(t *testing.T) {
 		Version:     "1.0.0",
 		Region:      "Test",
 		Environment: "Testing", // should result in notFound
-		Host:	     "localhost",
-		Reply:	     "localhost",
-		Port:	     9650,
+		Host:        "localhost",
+		Reply:       "localhost",
+		Port:        9650,
 	}
 	b, err = json.Marshal(c)
 	if err != nil {
