@@ -439,7 +439,13 @@ func TestCallback(t *testing.T) {
 	if resp.Code != http.StatusCreated {
 		t.Fatalf("Failed to perform callback: %d", resp.Code)
 	}
-	// TODO(miek): check for the callback to be performed
+	req, _ = http.NewRequest("DELETE", "/skydns/services/123", nil)
+	resp = httptest.NewRecorder()
+	s.router.ServeHTTP(resp, req)
+	if resp.Code != http.StatusOK {
+		t.Fatal("Failed to remove service")
+		// TODO(miek): check for the callback to be performed
+	}
 }
 
 func TestCallbackFailure(t *testing.T) {
