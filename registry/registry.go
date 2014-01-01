@@ -31,7 +31,7 @@ type Registry interface {
 	Len() int
 }
 
-// Creates a new DefaultRegistry
+// New returns a new DefaultRegistry.
 func New() Registry {
 	return &DefaultRegistry{
 		tree:  newNode(),
@@ -39,14 +39,14 @@ func New() Registry {
 	}
 }
 
-// Datastore for registered services
+// DefaultRegistry is a datastore for registered services.
 type DefaultRegistry struct {
 	tree  *node
 	nodes map[string]*node
 	mutex sync.Mutex
 }
 
-// Add service to registry
+// Add adds service to registry.
 func (r *DefaultRegistry) Add(s msg.Service) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -67,7 +67,7 @@ func (r *DefaultRegistry) Add(s msg.Service) error {
 	return err
 }
 
-// Remove Service specified by UUID
+// RemoveUUID removes a sErvice specified by an UUID.
 func (r *DefaultRegistry) RemoveUUID(uuid string) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -79,7 +79,7 @@ func (r *DefaultRegistry) RemoveUUID(uuid string) error {
 	return ErrNotExists
 }
 
-// Updates the TTL of a service, as well as pushes the expiration time out TTL seconds from now.
+// UpdateTTL updates the TTL of a service, as well as pushes the expiration time out TTL seconds from now.
 // This serves as a ping, for the service to keep SkyDNS aware of it's existence so that it is not expired, and purged.
 func (r *DefaultRegistry) UpdateTTL(uuid string, ttl uint32, expires time.Time) error {
 	r.mutex.Lock()
@@ -91,11 +91,10 @@ func (r *DefaultRegistry) UpdateTTL(uuid string, ttl uint32, expires time.Time) 
 
 		return nil
 	}
-
 	return ErrNotExists
 }
 
-// Remove service from registry while r.mutex is held
+// removeService remove service from registry while r.mutex is held.
 func (r *DefaultRegistry) removeService(s msg.Service) error {
 	// we can always delete, even if r.tree reports it doesn't exist,
 	// because this means, we just removed a bad service entry.
@@ -114,7 +113,7 @@ func (r *DefaultRegistry) removeService(s msg.Service) error {
 	return r.tree.remove(strings.Split(k, "."))
 }
 
-// Remove service from registry
+// Remove removes a service from registry.
 func (r *DefaultRegistry) Remove(s msg.Service) (err error) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -125,7 +124,7 @@ func (r *DefaultRegistry) Remove(s msg.Service) (err error) {
 	return ErrNotExists
 }
 
-// Retrieve a service based on it's UUID
+// GetUUID retrieves a service based on it's UUID.
 func (r *DefaultRegistry) GetUUID(uuid string) (s msg.Service, err error) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -141,13 +140,12 @@ func (r *DefaultRegistry) GetUUID(uuid string) (s msg.Service, err error) {
 	return s, ErrNotExists
 }
 
-/* Get retrieves a list of services from the registry that matches the given domain pattern
- *
- * uuid.host.region.version.service.environment
- * any of these positions may supply the wildcard "*", to have all values match in this position.
- * additionally, you only need to specify as much of the domain as needed the domain version.service.environment is perfectly acceptable,
- * and will assume "*" for all the ommited subdomain positions
- */
+// Get retrieves a list of services from the registry that matches the given domain pattern:
+//
+// uuid.host.region.version.service.environment
+// any of these positions may supply the wildcard "*", to have all values match in this position.
+// additionally, you only need to specify as much of the domain as needed the domain version.service.environment is perfectly acceptable,
+// and will assume "*" for all the ommited subdomain positions
 func (r *DefaultRegistry) Get(domain string) ([]msg.Service, error) {
 	// TODO: account for version wildcards
 	r.mutex.Lock()
@@ -174,7 +172,7 @@ func (r *DefaultRegistry) Get(domain string) ([]msg.Service, error) {
 	return r.tree.get(tree)
 }
 
-// Returns a slice of expired UUIDs
+// GetExpired returns a slice of expired UUIDs.
 func (r *DefaultRegistry) GetExpired() (uuids []string) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -190,6 +188,7 @@ func (r *DefaultRegistry) GetExpired() (uuids []string) {
 	return
 }
 
+// AddCallback adds callback c to the service s.
 func (r *DefaultRegistry) AddCallback(s msg.Service, c msg.Callback) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -201,6 +200,7 @@ func (r *DefaultRegistry) AddCallback(s msg.Service, c msg.Callback) error {
 	return ErrNotExists
 }
 
+// Len returns the size of the registry r.
 func (r *DefaultRegistry) Len() int {
 	return r.tree.size()
 }

@@ -24,7 +24,7 @@ type Service struct {
 	Callback    map[string]Callback `json:"-"` // Callbacks are found by UUID
 }
 
-// Returns the amount of time remaining before expiration
+// RemainingTTL returns the amount of time remaining before expiration.
 func (s *Service) RemainingTTL() uint32 {
 	d := s.Expires.Sub(time.Now())
 	ttl := uint32(d.Seconds())
@@ -35,7 +35,7 @@ func (s *Service) RemainingTTL() uint32 {
 	return ttl
 }
 
-// Updates TTL property to the RemainingTTL
+// UpdateTTL updates the TTL property to the RemainingTTL.
 func (s *Service) UpdateTTL() {
 	s.TTL = s.RemainingTTL()
 }
