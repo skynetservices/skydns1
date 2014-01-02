@@ -5,6 +5,8 @@
 package msg
 
 import (
+	"bytes"
+	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
@@ -56,15 +58,18 @@ type Callback struct {
 
 // Call calls the callback and performs the HTTP request.
 func (c Callback) Call(s Service) {
-	go func() {
-		log.Println("Performing callback to:", c.Reply, c.Port)
-		// TODO(miek): Use DELETE as mentioned in the README
-		resp, err := http.Get("http://" + c.Reply + ":" + strconv.Itoa(int(c.Port)) + "/skydns/callbacks/" + c.UUID)
-		if err != nil {
-			return
-		}
-		defer resp.Body.Close()
+	b, err := json.Marshal(s)
+	if err != nil {
 		return
-	}()
+	}
+	req, err := http.NewRequest("DELETE", "http://" + c.Reply + ":" + strconv.Itoa(int(c.Port)) + "/skydns/callbacks/" + c.UUID, bytes.NewBuffer(b))
+	if err != nil {
+		log.Println("Failed to create req.", err.Error)
+		return
+	}
+	if resp, err := http.DefaultClient.Do(req); err == nil {
+		resp.Body.Close()
+	}
+	log.Println("Performed callback to:", c.Reply, c.Port)
 	return
 }

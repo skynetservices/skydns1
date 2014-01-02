@@ -7,29 +7,19 @@ import (
 	"github.com/skynetservices/skydns/msg"
 	"github.com/skynetservices/skydns/registry"
 	"log"
-	//	"math"
-	//	"net"
 	"net/http"
-	//	"net/url"
-	//	"os"
-	//	"os/signal"
-	//	"strings"
-	//	"sync"
-	//	"time"
+	"strings"
 )
 
-// Handle API add callback requests
+// Handle API add callback requests.
 func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request) {
-	//	addServiceCount.Inc(1)
 	vars := mux.Vars(req)
 
 	var uuid string
 	var ok bool
 	var secret string
 
-	//read the authorization header to get the secret.
 	secret = req.Header.Get("Authorization")
-
 	if err := s.authenticate(secret); err != nil {
 		http.Error(w, err.Error(), http.StatusForbidden)
 		return
@@ -40,8 +30,6 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 		return
 	}
 
-	// find service
-
 	var cb msg.Callback
 
 	if err := json.NewDecoder(req.Body).Decode(&cb); err != nil {
@@ -51,31 +39,30 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 	}
 
 	cb.UUID = uuid
-	// We don't care about the other values once we have the
-	// key, set them to zero to save some memory.
-
 	// Lookup the service(s)
-	// TODO: getRegistryKey(s) isn't exported.
-	// TODO: version is thus not correctly formatted
-	key := cb.Name + "." + cb.Version + "." + cb.Environment + "." + cb.Region +
-		"." + cb.Host
+	// TODO: this should be a function call (or method)
+	key := cb.Region + "." + strings.Replace(cb.Version, ".", "-", -1) + "." + cb.Name + "." + cb.Environment
+	key = strings.ToLower(key)
 	services, err := s.registry.Get(key)
 	if err != nil || len(services) == 0 {
+		log.Println("Service not found for callback", key)
 		http.Error(w, err.Error(), http.StatusNotFound)
+		return
 	}
+	// Reset to save memory, only used so find the services(s).
 	cb.Name = ""
 	cb.Version = ""
 	cb.Environment = ""
 	cb.Region = ""
 	cb.Host = ""
 
+	notExists := 0
 	for _, serv := range services {
 		if _, err := s.raftServer.Do(NewAddCallbackCommand(serv, cb)); err != nil {
 			switch err {
 			case registry.ErrNotExists:
-				http.Error(w, err.Error(), http.StatusNotFound)
-				// Don't return here, other services might exist
-				// TODO(miek): set error in var and check afterwards?
+				notExists++
+				continue
 			case raft.NotLeaderError:
 				s.redirectToLeader(w, req)
 				return
@@ -85,6 +72,10 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 				return
 			}
 		}
+	}
+	if notExists == len(services) {
+		http.Error(w, registry.ErrNotExists.Error(), http.StatusNotFound)
+		return
 	}
 	w.WriteHeader(http.StatusCreated)
 }

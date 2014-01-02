@@ -48,6 +48,7 @@ func init() {
 	raft.RegisterCommand(&AddServiceCommand{})
 	raft.RegisterCommand(&UpdateTTLCommand{})
 	raft.RegisterCommand(&RemoveServiceCommand{})
+	raft.RegisterCommand(&AddCallbackCommand{})
 
 	expiredCount = metrics.NewCounter()
 	metrics.Register("skydns-expired-entries", expiredCount)
@@ -66,7 +67,6 @@ func init() {
 
 	removeServiceCount = metrics.NewCounter()
 	metrics.Register("skydns-remove-service-requests", removeServiceCount)
-
 }
 
 type Server struct {

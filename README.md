@@ -46,6 +46,9 @@ If a service with this UUID already exists you will receive back an http status 
 
 SkyDNS will now have an entry for your service that will live for the number of seconds supplied in your TTL (10 seconds in our example), unless you send a heartbeat to update the TTL.
 
+Note that instead of a hostname you can also use an IP address (IPv4 or IPV6), in that case
+SkyDNS will make up an hostname that is used in the SRV record (defaults to UUID.skydns.local) and adds the IP adress as an A or AAAAA record in the additional section for this hostname.
+
 ### Heartbeat / Keep alive
 SkyDNS requires that services submit an HTTP request to update their TTL within the TTL they last supplied. If the service fails to do so within this timeframe SkyDNS will expire the service automatically. This will allow for nodes to fail and DNS to reflect this quickly.
 
@@ -74,10 +77,7 @@ they are called when the service is deleted.
 This will result in the call back being sent to `web2.example.nl` on port 5441. The
 callback itself will be a HTTP DELETE:
 
-`curl -X DELETE -L http://web2.example.nl:5441/skydns/callbacks/1001` -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"web1.site.com}'`
-
-TODO(miek): Callbacks will be deleted when all services are removed. However when a service
-    is re-added, the callback will not be called (because there is none)...
+`curl -X DELETE -L http://web2.example.nl:5441/skydns/callbacks/1001 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"web1.site.com"}'`
 
 ##Discovery (DNS)
 You can find services by querying SkyDNS via any DNS client or utility. It uses a known domain syntax with wildcards to find matching services.
@@ -125,11 +125,6 @@ Now we can try some of our example DNS lookups:
 	production.skydns.local.		3985	IN	SRV	10 20 80   web3.site.com.
 	production.skydns.local.		3990	IN	SRV	10 20 80   web4.site.com.
 
-	;; Query time: 1 msec
-	;; SERVER: 127.0.0.1#53(127.0.0.1)
-	;; WHEN: Thu Oct 10 11:47:08 EDT 2013
-	;; MSG SIZE  rcvd: 238
-	
 #####All TestService instances in Production Environment
 `dig @localhost testservice.production.skydns.local SRV`
 
@@ -143,11 +138,6 @@ Now we can try some of our example DNS lookups:
 	testservice.production.skydns.local.	3972	IN	SRV	10 20 80   web3.site.com.
 	testservice.production.skydns.local.	3976	IN	SRV	10 20 80   web4.site.com.
 
-	;; Query time: 0 msec
-	;; SERVER: 127.0.0.1#53(127.0.0.1)
-	;; WHEN: Thu Oct 10 11:47:22 EDT 2013
-	;; MSG SIZE  rcvd: 310
-	
 #####All TestService v1.0.0 Instances in Production Environment
 `dig @localhost 1-0-0.testservice.production.skydns.local SRV`
 
@@ -161,11 +151,6 @@ Now we can try some of our example DNS lookups:
 	1-0-0.testservice.production.skydns.local. 3956 IN	SRV	10 20 80   web3.site.com.
 	1-0-0.testservice.production.skydns.local. 3961 IN	SRV	10 20 80   web4.site.com.
 
-	;; Query time: 0 msec
-	;; SERVER: 127.0.0.1#53(127.0.0.1)
-	;; WHEN: Thu Oct 10 11:47:37 EDT 2013
-	;; MSG SIZE  rcvd: 346
-	
 #####All TestService Instances at any version, within the East region
 `dig @localhost east.*.testservice.production.skydns.local SRV`
 
@@ -180,11 +165,6 @@ This is where we've changed things up a bit, notice we used the "*" wildcard for
 	east.*.testservice.production.skydns.local. 3531 IN SRV	20 33 9000 server24.
 	east.*.testservice.production.skydns.local. 3887 IN SRV	20 33 80   web3.site.com.
 	east.*.testservice.production.skydns.local. 3892 IN SRV	20 33 80   web4.site.com.
-
-	;; Query time: 0 msec
-	;; SERVER: 127.0.0.1#53(127.0.0.1)
-	;; WHEN: Thu Oct 10 11:48:46 EDT 2013
-	;; MSG SIZE  rcvd: 364
 
 ## License
 The MIT License (MIT)
