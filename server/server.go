@@ -722,7 +722,7 @@ func (s *Server) getServiceHTTPHandler(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	var b bytes.Buffer
-	json.NewEncoder(&b).Encode(serv)
-	w.Write(b.Bytes())
+	if err := json.NewEncoder(w).Encode(serv); err != nil {
+		log.Println("Error: ", err)
+	}
 }
