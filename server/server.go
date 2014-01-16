@@ -94,7 +94,7 @@ type Server struct {
 }
 
 // Newserver returns a new Server.
-func NewServer(members []string, domain string, dnsAddr string, httpAddr string, dataDir string, rt, wt time.Duration, secret string) (s *Server) {
+func NewServer(members []string, domain string, dnsAddr string, httpAddr string, dataDir string, rt, wt time.Duration, secret string, nameservers []string) (s *Server) {
 	s = &Server{
 		members:      members,
 		domain:       domain,
@@ -108,6 +108,7 @@ func NewServer(members []string, domain string, dnsAddr string, httpAddr string,
 		dnsHandler:   dns.NewServeMux(),
 		waiter:       new(sync.WaitGroup),
 		secret:       secret,
+		nameservers:  nameservers,
 	}
 
 	if _, err := os.Stat(s.dataDir); os.IsNotExist(err) {
@@ -394,21 +395,22 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 
 // ServeDNSForward forwards a request to a nameservers and returns the response.
 func (s *Server) ServeDNSForward(w dns.ResponseWriter, req *dns.Msg) {
-	q := req.Question[0]
 	network := "udp"
-	if _, ok := resp.RemoteAddr().(*net.TCPAddr); ok {
+	if _, ok := w.RemoteAddr().(*net.TCPAddr); ok {
 		network = "tcp"
 	}
-	m := new(dns.Msg)
 	c := &dns.Client{Net: network}
-	r, rtt, err := c.Exchange(req, recursor)
+	// TODO(miek): fancy nameserver selection based an RTTs
+	r, _, err := c.Exchange(req, s.nameservers[0])
 
-	m.SetReply(req) // TODO(miek): EDNS0 'n stuff, DNSSEC...
-	defer w.WriteMsg(m)
-
-	if err != nil {
-		m.SetRcode(req, dns.RcodeServerFailure)
+	if err == nil {
+		w.WriteMsg(r)
+		return
 	}
+	m := new(dns.Msg)
+	m.SetReply(req)
+	m.SetRcode(req, dns.RcodeServerFailure)
+	w.WriteMsg(m)
 }
 
 func (s *Server) getARecords(q dns.Question) (records []dns.RR, err error) {

@@ -40,14 +40,12 @@ func init() {
 	flag.StringVar(&graphiteServer, "graphiteServer", "", "Graphite Server connection string e.g. 127.0.0.1:2003")
 	flag.StringVar(&stathatUser, "stathatUser", "", "StatHat account for metrics")
 	flag.StringVar(&secret, "secret", "", "Shared secret for use with http api")
-	flag.StringVar(&nameserver, "nameserver, "", "Namserver address to forward (non-local) queries too")
+	flag.StringVar(&nameserver, "nameserver", "", "Nameserver address to forward (non-local) queries to")
 }
 
 func main() {
 	members := make([]string, 0)
-
 	raft.SetLogLevel(0)
-
 	flag.Parse()
 
 	if discover {
@@ -70,7 +68,7 @@ func main() {
 		members = strings.Split(join, ",")
 	}
 
-	s := server.NewServer(members, domain, ldns, lhttp, dataDir, rtimeout, wtimeout, secret)
+	s := server.NewServer(members, domain, ldns, lhttp, dataDir, rtimeout, wtimeout, secret, []string{nameserver})
 
 	// Set up metrics if specified on the command line
 	if metricsToStdErr {
