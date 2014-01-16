@@ -71,6 +71,7 @@ func init() {
 
 type Server struct {
 	members      []string // initial members to join with
+	nameservers  []string // nameservers to forward to
 	domain       string
 	dnsAddr      string
 	httpAddr     string
@@ -355,9 +356,9 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	q := req.Question[0]
 	log.Printf("Received DNS Request for %q from %q", q.Name, w.RemoteAddr())
 
-	// If the query does not fall in our s.domain
-	if strings.HasSuffix(q, dns.Fqdn(s.domain)) {
-		s.ServeDNSForward(w dns.ResponseWriter, req *dns.Msg)
+	// If the query does not fall in our s.domain, forward it
+	if strings.HasSuffix(q.Name, dns.Fqdn(s.domain)) {
+		s.ServeDNSForward(w, req)
 		return
 	}
 	m := new(dns.Msg)
@@ -393,6 +394,21 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 
 // ServeDNSForward forwards a request to a nameservers and returns the response.
 func (s *Server) ServeDNSForward(w dns.ResponseWriter, req *dns.Msg) {
+	q := req.Question[0]
+	network := "udp"
+	if _, ok := resp.RemoteAddr().(*net.TCPAddr); ok {
+		network = "tcp"
+	}
+	m := new(dns.Msg)
+	c := &dns.Client{Net: network}
+	r, rtt, err := c.Exchange(req, recursor)
+
+	m.SetReply(req) // TODO(miek): EDNS0 'n stuff, DNSSEC...
+	defer w.WriteMsg(m)
+
+	if err != nil {
+		m.SetRcode(req, dns.RcodeServerFailure)
+	}
 }
 
 func (s *Server) getARecords(q dns.Question) (records []dns.RR, err error) {
