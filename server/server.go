@@ -347,19 +347,23 @@ func (s *Server) joinHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// Handler for DNS requests, responsible for parsing DNS request and returning response.
+// ServeDNS is the handler for DNS requests, responsible for parsing DNS request, possibly forwarding
+// it to a real dns server and returning a response.
 func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	requestCount.Inc(1)
 
+	q := req.Question[0]
+	log.Printf("Received DNS Request for %q from %q", q.Name, w.RemoteAddr())
+
+	// If the query does not fall in our s.domain
+	if strings.HasSuffix(q, dns.Fqdn(s.domain)) {
+		s.ServeDNSForward(w dns.ResponseWriter, req *dns.Msg)
+		return
+	}
 	m := new(dns.Msg)
 	m.SetReply(req)
 	m.Answer = make([]dns.RR, 0, 10)
-
 	defer w.WriteMsg(m)
-
-	q := req.Question[0]
-
-	log.Printf("Received DNS Request for %q from %q", q.Name, w.RemoteAddr())
 
 	if q.Qtype == dns.TypeANY || q.Qtype == dns.TypeSRV {
 		records, extra, err := s.getSRVRecords(q)
@@ -385,6 +389,10 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 
 		m.Answer = append(m.Answer, records...)
 	}
+}
+
+// ServeDNSForward forwards a request to a nameservers and returns the response.
+func (s *Server) ServeDNSForward(w dns.ResponseWriter, req *dns.Msg) {
 }
 
 func (s *Server) getARecords(q dns.Question) (records []dns.RR, err error) {

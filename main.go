@@ -24,6 +24,7 @@ var (
 	metricsToStdErr                    bool
 	graphiteServer, stathatUser        string
 	secret                             string
+	nameserver                         string // TODO(miek): make []string
 )
 
 func init() {
@@ -39,6 +40,7 @@ func init() {
 	flag.StringVar(&graphiteServer, "graphiteServer", "", "Graphite Server connection string e.g. 127.0.0.1:2003")
 	flag.StringVar(&stathatUser, "stathatUser", "", "StatHat account for metrics")
 	flag.StringVar(&secret, "secret", "", "Shared secret for use with http api")
+	flag.StringVar(&nameserver, "nameserver, "", "Namserver address to forward (non-local) queries too")
 }
 
 func main() {
@@ -87,11 +89,9 @@ func main() {
 	}
 
 	waiter, err := s.Start()
-
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
-
 	waiter.Wait()
 }
