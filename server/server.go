@@ -36,12 +36,21 @@ import (
    TTL cleanup thread should shutdown/start based on being elected master
 */
 
-var expiredCount metrics.Counter
-var requestCount metrics.Counter
-var addServiceCount metrics.Counter
-var updateTTLCount metrics.Counter
-var getServiceCount metrics.Counter
-var removeServiceCount metrics.Counter
+var (
+	expiredCount       metrics.Counter
+	requestCount       metrics.Counter
+	addServiceCount    metrics.Counter
+	updateTTLCount     metrics.Counter
+	getServiceCount    metrics.Counter
+	removeServiceCount metrics.Counter
+)
+
+const (
+	rttUNREACHABLE = iota
+	rrtGOOD 
+	rttFAIR
+	rrtBAD
+)
 
 func init() {
 	// Register Raft Commands
