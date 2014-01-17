@@ -5,7 +5,6 @@
 package server
 
 import (
-	"bytes"
 	"encoding/json"
 	"github.com/skynetservices/skydns/registry"
 	"log"
@@ -46,10 +45,9 @@ func (s *Server) getRegionsHTTPHandler(w http.ResponseWriter, req *http.Request)
 		}
 	}
 
-	var b bytes.Buffer
-	json.NewEncoder(&b).Encode(regions)
-	w.Write(b.Bytes())
-
+	if err := json.NewEncoder(w).Encode(regions); err != nil {
+		log.Println("Error: ", err)
+	}
 }
 
 func (s *Server) getEnvironmentsHTTPHandler(w http.ResponseWriter, req *http.Request) {
@@ -86,9 +84,9 @@ func (s *Server) getEnvironmentsHTTPHandler(w http.ResponseWriter, req *http.Req
 		}
 	}
 
-	var b bytes.Buffer
-	json.NewEncoder(&b).Encode(environments)
-	w.Write(b.Bytes())
+	if err := json.NewEncoder(w).Encode(environments); err != nil {
+		log.Println("Error: ", err)
+	}
 }
 
 func (s *Server) getServicesHTTPHandler(w http.ResponseWriter, req *http.Request) {
@@ -127,7 +125,7 @@ func (s *Server) getServicesHTTPHandler(w http.ResponseWriter, req *http.Request
 		return
 	}
 
-	var b bytes.Buffer
-	json.NewEncoder(&b).Encode(srv)
-	w.Write(b.Bytes())
+	if err := json.NewEncoder(w).Encode(srv); err != nil {
+		log.Println("Error: ", err)
+	}
 }
