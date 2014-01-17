@@ -41,6 +41,28 @@ Which takes the following flags
 ##API
 ### Service Announcements
 You announce your service by submitting JSON over HTTP to SkyDNS with information about your service.
+This information will then be available for queries either via DNS or HTTP.
+
+When providing information you will need to fill out the following values. Note you are free to use
+whatever you like, so take the following list as a guide only.
+
+* Name - The name of your service, e.g., "rails", "web" or anything else you like
+* Version - A version string, note the dots in this string are translated to hyphens when
+    querying via the DNS
+* Environment - Can be something as "production" or "testing"
+* Region - Where do these hosts live, e.g. "east", "west" or even "test"
+* Host, Port and TTL - Denote the actuals hosts and how long (TTL) this information is valid.
+
+When queried SkyDNS will return records containing these elements in the following
+order:
+
+    <uuid>.<host>.<region>.<version>.<service>.<environment>.skydns.local
+
+Where `<uuid>` is the identifier used when registering this host and service. And also
+note the `<service>` corresponds with the Name given above.
+
+Note some of these elements may contain a wildcard or be left out completely,
+see the section named "Wildcards" below for more information.
 
 #### Without Shared Secret 
 `curl -X PUT -L http://localhost:8080/skydns/services/1001 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"web1.site.com","Port":9000,"TTL":10}'`
@@ -111,12 +133,14 @@ Priorities and Weights are based on the requested Region, as well as how many no
 ###Domain Format
 The domain syntax when querying follows a pattern where the right
 most positions are more generic, than the subdomains to their left:
-*\<uuid\>.\<host\>.\<region\>.\<version\>.\<service\>.\<environment\>.skydns.loc
-al*. This allows for you to supply only the positions you care about:
+*\<uuid\>.\<host\>.\<region\>.\<version\>.\<service\>.\<environment\>.skydns.local*. 
+This allows for you to supply only the positions you care about:
 
 - authservice.production.skydns.local - For instance would return all services with the name AuthService in the production environment, regardless of the Version, Region, or Host
 - 1-0-0.authservice.production.skydns.local - Is the same as above but restricting it to only version 1.0.0
 - east.1-0-0.authservice.production.skydns.local - Would add the restriction that the services must be running in the East region
+
+#### Wildcards
 
 In addition to only needing to specify as much of the domain as required for the granularity level you're looking for, you may also supply the wildcard `*` in any of the positions.
 
