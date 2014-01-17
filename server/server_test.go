@@ -773,13 +773,13 @@ func TestDNSARecords(t *testing.T) {
 }
 
 func TestDNSForward(t *testing.T) {
-	s := newTestServer("", 9610, 9611, "", "8.8.8.8:53")
+	s := newTestServer("", 9620, 9621, "", "8.8.8.8:53")
 	defer s.Stop()
 	
 	c := new(dns.Client)
 	m := new(dns.Msg)
 	m.SetQuestion("www.example.com.", dns.TypeA)
-	resp, _, err := c.Exchange(m, "localhost:9610")
+	resp, _, err := c.Exchange(m, "localhost:9620")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -788,7 +788,7 @@ func TestDNSForward(t *testing.T) {
 	}
 	// TCP
 	c.Net = "tcp"
-	resp, _, err = c.Exchange(m, "localhost:9610")
+	resp, _, err = c.Exchange(m, "localhost:9620")
 	if err != nil {
 		t.Fatal(err)
 	}
