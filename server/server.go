@@ -409,6 +409,7 @@ func (s *Server) ServeDNSForward(w dns.ResponseWriter, req *dns.Msg) {
 	if _, ok := w.RemoteAddr().(*net.TCPAddr); ok {
 		network = "tcp"
 	}
+	// TODO(miek): client timeouts, slight larger because we are recursing?
 	c := &dns.Client{Net: network}
 
 	// use request Id for "random" nameserver selection
@@ -425,6 +426,7 @@ Redo:
 	// but only if we have not exausted our nameservers
 	if try < len(s.nameservers) {
 		log.Printf("Error: Failure to Forward DNS Request %q", err)
+		try++
 		nsid = (nsid+1)%len(s.nameservers)
 		goto Redo
 	}
