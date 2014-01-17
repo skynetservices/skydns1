@@ -429,7 +429,7 @@ Redo:
 	if try < len(s.nameservers) {
 		log.Printf("Error: Failure to Forward DNS Request %q", err)
 		try++
-		nsid = (nsid+1)%len(s.nameservers)
+		nsid = (nsid + 1) % len(s.nameservers)
 		goto Redo
 	}
 
@@ -444,16 +444,6 @@ func (s *Server) getARecords(q dns.Question) (records []dns.RR, err error) {
 	var h string
 	name := strings.TrimSuffix(q.Name, ".")
 
-	// Leader should always be listed
-	if name == "leader."+s.domain || name == "master."+s.domain || name == s.domain {
-		h, _, err = net.SplitHostPort(s.Leader())
-
-		if err != nil {
-			return
-		}
-		records = append(records, &dns.A{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 15}, A: net.ParseIP(h)})
-	}
-
 	if name == s.domain {
 		for _, m := range s.Members() {
 			h, _, err = net.SplitHostPort(m)
@@ -464,7 +454,43 @@ func (s *Server) getARecords(q dns.Question) (records []dns.RR, err error) {
 			records = append(records, &dns.A{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 15}, A: net.ParseIP(h)})
 		}
 	}
+	// Leader should always be listed
+	if name == "leader."+s.domain || name == "master."+s.domain || name == s.domain {
+		h, _, err = net.SplitHostPort(s.Leader())
+
+		if err != nil {
+			return
+		}
+		records = append(records, &dns.A{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 15}, A: net.ParseIP(h)})
+		return
+	}
+
+	var (
+		services []msg.Service
+		key      = strings.TrimSuffix(q.Name, s.domain+".")
+	)
+
+	services, err = s.registry.Get(key)
+	if err != nil {
+		return
+	}
+
+	for _, serv := range services {
+		ip := net.ParseIP(serv.Host)
+		switch {
+		case ip == nil:
+			continue
+		case ip.To4() != nil:
+			records = append(records, &dns.A{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: serv.TTL}, A: ip.To4()})
+		case ip.To16() != nil:
+			records = append(records, &dns.AAAA{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: serv.TTL}, AAAA: ip.To16()})
+		default:
+			panic("skydns: internal error")
+		}
+	}
+
 	return
+
 }
 
 func (s *Server) getSRVRecords(q dns.Question) (records []dns.RR, extra []dns.RR, err error) {
