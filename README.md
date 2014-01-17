@@ -47,9 +47,9 @@ When providing information you will need to fill out the following values. Note 
 whatever you like, so take the following list as a guide only.
 
 * Name - The name of your service, e.g., "rails", "web" or anything else you like
-* Version - A version string, not the dots in this string are translated to hyphens when
+* Version - A version string, note the dots in this string are translated to hyphens when
     querying via the DNS
-* Environment - Can be something as "production", "testing"
+* Environment - Can be something as "production" or "testing"
 * Region - Where do these hosts live, e.g. "east", "west" or even "test"
 * Host, Port and TTL - Denote the actuals hosts and how long (TTL) this information is valid.
 
@@ -58,10 +58,11 @@ order:
 
     <uuid>.<host>.<region>.<version>.<service>.<environment>.skydns.local
 
-Where `<uuid>` is the identifier used when registering this host and service.
+Where `<uuid>` is the identifier used when registering this host and service. And also
+note the `<service>` corresponds with the Name given above.
 
 Note some of these elements may contain a wildcard or be left out completely,
-see [](#wildcards) for more information.
+see the section named "Wildcards" below for more information.
 
 #### Without Shared Secret 
 `curl -X PUT -L http://localhost:8080/skydns/services/1001 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"web1.site.com","Port":9000,"TTL":10}'`
