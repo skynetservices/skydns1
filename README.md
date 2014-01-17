@@ -210,7 +210,7 @@ Now you have a list of all known IP Addresses registered running the `rails` ser
 
 ####DNS Forwarding
 
-By specifying `-nameserver="8.8.8.8:53,8.8.4.4:53" on the `skydns` command line, you create a DNS forwarding proxy.  Requests for which SkyDNS isn't authoritative will be forwarded and proxied back to the client.  This means that you can set SkyDNS as the primary DNS server in /etc/resolv.conf and use it for both service discovery and normal DNS operations.  Please test this before relying on it in production, as there may be edge cases that don't work as planned.
+By specifying `-nameserver="8.8.8.8:53,8.8.4.4:53` on the `skydns` command line, you create a DNS forwarding proxy.  Requests for which SkyDNS isn't authoritative will be forwarded and proxied back to the client.  This means that you can set SkyDNS as the primary DNS server in /etc/resolv.conf and use it for both service discovery and normal DNS operations.  Please test this before relying on it in production, as there may be edge cases that don't work as planned.
 
 
 ## License
