@@ -1,11 +1,19 @@
 #SkyDNS [![Build Status](https://travis-ci.org/skynetservices/skydns.png)](https://travis-ci.org/skynetservices/skydns)
 *Version 0.2.0*
 
-SkyDNS is a distributed service for announcement and discovery of services. It leverages Raft for high-availability and consensus, and utilizes DNS for queries to discover available services. This is done by leveraging SRV records in DNS, with special meaning given to subdomains, priorities and weights.
+SkyDNS is a distributed service for announcement and discovery of services. It
+leverages Raft for high-availability and consensus, and utilizes DNS for queries
+to discover available services. This is done by leveraging SRV records in DNS,
+with special meaning given to subdomains, priorities and weights.
 
-SkyDNS will also act as a forwarding DNS proxy, so that you can set your SkyDNS instance as the primary DNS service in /etc/resolv.conf and SkyDNS will forward and proxy requests for which it is not authoritative.
+SkyDNS will also act as a forwarding DNS proxy, so that you can set your SkyDNS
+instance as the primary DNS service in /etc/resolv.conf and SkyDNS will forward
+and proxy requests for which it is not authoritative.
 
-Besides serving SRV records, which include ALL the information you need to connect to your service, SkyDNS will also return A records.  This is useful if you already know what port a particular service is using, and you just want a list of IP addresses with known running instances.
+Besides serving SRV records, which include ALL the information you need to
+connect to your service, SkyDNS will also return A records. This is useful if
+you already know what port a particular service is using, and you just want a
+list of IP addresses with known running instances.
 
 [Announcement Blog Post](http://blog.gopheracademy.com/skydns)
 
@@ -47,17 +55,27 @@ If unsuccessful you should receive an http status code of: **403 Forbidden**
 
 If successful you should receive an http status code of: **201 Created**
 
-If a service with this UUID already exists you will receive back an http status code of: **409 Conflict**
+If a service with this UUID already exists you will receive back an http status
+code of: **409 Conflict**
 
-SkyDNS will now have an entry for your service that will live for the number of seconds supplied in your TTL (10 seconds in our example), unless you send a heartbeat to update the TTL.
+SkyDNS will now have an entry for your service that will live for the number
+of seconds supplied in your TTL (10 seconds in our example), unless you send a
+heartbeat to update the TTL.
 
-Note that instead of a hostname you can also use an IP address (IPv4 or IPV6), in that case
-SkyDNS will make up an hostname that is used in the SRV record (defaults to UUID.skydns.local) and adds the IP adress as an A or AAAAA record in the additional section for this hostname.
+Note that instead of a hostname you can also use an IP address (IPv4 or IPV6),
+in that case SkyDNS will make up an hostname that is used in the SRV record
+(defaults to UUID.skydns.local) and adds the IP adress as an A or AAAAA record
+in the additional section for this hostname.
 
 ### Heartbeat / Keep alive
-SkyDNS requires that services submit an HTTP request to update their TTL within the TTL they last supplied. If the service fails to do so within this timeframe SkyDNS will expire the service automatically. This will allow for nodes to fail and DNS to reflect this quickly.
+SkyDNS requires that services submit an HTTP request to update their TTL within
+the TTL they last supplied. If the service fails to do so within this timeframe
+SkyDNS will expire the service automatically. This will allow for nodes to fail
+and DNS to reflect this quickly.
 
-You can update your TTL by sending an HTTP request to SkyDNS with an updated TTL, it can be the same as before to allow it to live for another 10s, or it can be adjusted to a shorter or longer duration.
+You can update your TTL by sending an HTTP request to SkyDNS with an updated
+TTL, it can be the same as before to allow it to live for another 10s, or it can
+be adjusted to a shorter or longer duration.
 
 `curl -X PATCH -L http://localhost:8080/skydns/services/1001 -d '{"TTL":10}'`
 
@@ -67,15 +85,16 @@ If you wish to remove your service from SkyDNS for any reason without waiting fo
 `curl -X DELETE -L http://localhost:8080/skydns/services/1001`
 
 ### Retrieve Service Info via API
-Currently you may only retrieve a service's info by UUID of the service, in the future we may implement querying of the services similar to the DNS interface.
+Currently you may only retrieve a service's info by UUID of the service, in the
+future we may implement querying of the services similar to the DNS interface.
 
 `curl -X GET -L http://localhost:8080/skydns/services/1001`
 
 ### Call backs
-Registering a call back is similar to registering a service.
-A service that registers a call back will receive an HTTP request.
-Every time something changes in the service: the callback is executed, currently
-they are called when the service is deleted.
+Registering a call back is similar to registering a service. A service that
+registers a call back will receive an HTTP request. Every time something changes
+in the service: the callback is executed, currently they are called when the
+service is deleted.
 
 `curl -X PUT -L http://localhost:8080/skydns/callbacks/1001 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"web1.site.com",Reply:"web2.example.nl","Port":5441}'`
 
@@ -90,7 +109,10 @@ You can find services by querying SkyDNS via any DNS client or utility. It uses 
 Priorities and Weights are based on the requested Region, as well as how many nodes are available matching the current request in the given region.
 
 ###Domain Format
-The domain syntax when querying follows a pattern where the right most positions are more generic, than the subdomains to their left: *\<uuid\>.\<host\>.\<region\>.\<version\>.\<service\>.\<environment\>.skydns.local*. This allows for you to supply only the positions you care about:
+The domain syntax when querying follows a pattern where the right
+most positions are more generic, than the subdomains to their left:
+*\<uuid\>.\<host\>.\<region\>.\<version\>.\<service\>.\<environment\>.skydns.loc
+al*. This allows for you to supply only the positions you care about:
 
 - authservice.production.skydns.local - For instance would return all services with the name AuthService in the production environment, regardless of the Version, Region, or Host
 - 1-0-0.authservice.production.skydns.local - Is the same as above but restricting it to only version 1.0.0
@@ -159,7 +181,11 @@ Now we can try some of our example DNS lookups:
 #####All TestService Instances at any version, within the East region
 `dig @localhost east.*.testservice.production.skydns.local SRV`
 
-This is where we've changed things up a bit, notice we used the "*" wildcard for version so we get any version, and because we've supplied an explicit region that we're looking for we get that as the highest DNS priority, with the weight being distributed evenly, then all of our West instances still show up for fail-over, but with a higher Priority.
+This is where we've changed things up a bit, notice we used the "*" wildcard for
+version so we get any version, and because we've supplied an explicit region
+that we're looking for we get that as the highest DNS priority, with the weight
+being distributed evenly, then all of our West instances still show up for
+fail-over, but with a higher Priority.
 
 	;; QUESTION SECTION:
 	;east.*.testservice.production.skydns.local. IN	SRV
@@ -206,11 +232,20 @@ Now do a normal DNS query:
 	;; WHEN: Fri Jan 17 11:52:29 2014
 	;; MSG SIZE  rcvd: 227
 
-Now you have a list of all known IP Addresses registered running the `rails` service name.  Because we're returning A records and not SRV records, there are no ports listed, so this is only useful when you're querying for services running on ports known to you in advance.   Notice, we didn't specify version or region, but we could have.
+Now you have a list of all known IP Addresses registered running the `rails`
+service name. Because we're returning A records and not SRV records, there
+are no ports listed, so this is only useful when you're querying for services
+running on ports known to you in advance. Notice, we didn't specify version or
+region, but we could have.
 
 ####DNS Forwarding
 
-By specifying `-nameserver="8.8.8.8:53,8.8.4.4:53` on the `skydns` command line, you create a DNS forwarding proxy.  Requests for which SkyDNS isn't authoritative will be forwarded and proxied back to the client.  This means that you can set SkyDNS as the primary DNS server in /etc/resolv.conf and use it for both service discovery and normal DNS operations.  Please test this before relying on it in production, as there may be edge cases that don't work as planned.
+By specifying `-nameserver="8.8.8.8:53,8.8.4.4:53` on the `skydns` command line,
+you create a DNS forwarding proxy. Requests for which SkyDNS isn't authoritative
+will be forwarded and proxied back to the client. This means that you can set
+SkyDNS as the primary DNS server in /etc/resolv.conf and use it for both service
+discovery and normal DNS operations. Please test this before relying on it in
+production, as there may be edge cases that don't work as planned.
 
 
 ## License
