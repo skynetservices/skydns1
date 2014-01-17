@@ -36,12 +36,14 @@ import (
    TTL cleanup thread should shutdown/start based on being elected master
 */
 
-var expiredCount metrics.Counter
-var requestCount metrics.Counter
-var addServiceCount metrics.Counter
-var updateTTLCount metrics.Counter
-var getServiceCount metrics.Counter
-var removeServiceCount metrics.Counter
+var (
+	expiredCount       metrics.Counter
+	requestCount       metrics.Counter
+	addServiceCount    metrics.Counter
+	updateTTLCount     metrics.Counter
+	getServiceCount    metrics.Counter
+	removeServiceCount metrics.Counter
+)
 
 func init() {
 	// Register Raft Commands
@@ -71,6 +73,7 @@ func init() {
 
 type Server struct {
 	members      []string // initial members to join with
+	nameservers  []string // nameservers to forward to
 	domain       string
 	dnsAddr      string
 	httpAddr     string
@@ -93,7 +96,7 @@ type Server struct {
 }
 
 // Newserver returns a new Server.
-func NewServer(members []string, domain string, dnsAddr string, httpAddr string, dataDir string, rt, wt time.Duration, secret string) (s *Server) {
+func NewServer(members []string, domain string, dnsAddr string, httpAddr string, dataDir string, rt, wt time.Duration, secret string, nameservers []string) (s *Server) {
 	s = &Server{
 		members:      members,
 		domain:       domain,
@@ -107,6 +110,7 @@ func NewServer(members []string, domain string, dnsAddr string, httpAddr string,
 		dnsHandler:   dns.NewServeMux(),
 		waiter:       new(sync.WaitGroup),
 		secret:       secret,
+		nameservers:  nameservers,
 	}
 
 	if _, err := os.Stat(s.dataDir); os.IsNotExist(err) {
@@ -148,7 +152,7 @@ func (s *Server) HTTPAddr() string { return s.httpAddr }
 // Start starts a DNS server and blocks waiting to be killed.
 func (s *Server) Start() (*sync.WaitGroup, error) {
 	var err error
-	log.Printf("Initializing Server. DNS Addr: %q, HTTP Addr: %q, Data Dir: %q", s.dnsAddr, s.httpAddr, s.dataDir)
+	log.Printf("Initializing Server. DNS Addr: %q, HTTP Addr: %q, Data Dir: %q, Forwarders: %q", s.dnsAddr, s.httpAddr, s.dataDir, s.nameservers)
 
 	// Initialize and start Raft server.
 	transporter := raft.NewHTTPTransporter("/raft")
@@ -347,19 +351,23 @@ func (s *Server) joinHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// Handler for DNS requests, responsible for parsing DNS request and returning response.
+// ServeDNS is the handler for DNS requests, responsible for parsing DNS request, possibly forwarding
+// it to a real dns server and returning a response.
 func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	requestCount.Inc(1)
 
+	q := req.Question[0]
+	log.Printf("Received DNS Request for %q from %q", q.Name, w.RemoteAddr())
+
+	// If the query does not fall in our s.domain, forward it
+	if !strings.HasSuffix(q.Name, dns.Fqdn(s.domain)) {
+		s.ServeDNSForward(w, req)
+		return
+	}
 	m := new(dns.Msg)
 	m.SetReply(req)
 	m.Answer = make([]dns.RR, 0, 10)
-
 	defer w.WriteMsg(m)
-
-	q := req.Question[0]
-
-	log.Printf("Received DNS Request for %q from %q", q.Name, w.RemoteAddr())
 
 	if q.Qtype == dns.TypeANY || q.Qtype == dns.TypeSRV {
 		records, extra, err := s.getSRVRecords(q)
@@ -387,6 +395,51 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	}
 }
 
+// ServeDNSForward forwards a request to a nameservers and returns the response.
+func (s *Server) ServeDNSForward(w dns.ResponseWriter, req *dns.Msg) {
+	if len(s.nameservers) == 0 {
+		log.Printf("Error: Failure to Forward DNS Request %q", dns.ErrServ)
+		m := new(dns.Msg)
+		m.SetReply(req)
+		m.SetRcode(req, dns.RcodeServerFailure)
+		w.WriteMsg(m)
+		return
+	}
+	network := "udp"
+	if _, ok := w.RemoteAddr().(*net.TCPAddr); ok {
+		network = "tcp"
+	}
+	// TODO(miek): client timeouts, slight larger because we are recursing?
+	c := &dns.Client{Net: network}
+
+	// TODO(miek): add another random value so the client can not influence
+	// which server we choose?
+	// use request Id for "random" nameserver selection
+	nsid := int(req.Id) % len(s.nameservers)
+	try := 0
+Redo:
+	r, _, err := c.Exchange(req, s.nameservers[nsid])
+	if err == nil {
+		//log.Printf("Forwarded DNS Request %q to %q", req.Question[0].Name, s.nameservers[nsid])
+		w.WriteMsg(r)
+		return
+	}
+	// Seen an error, this can only mean, "server not reached", try again
+	// but only if we have not exausted our nameservers
+	if try < len(s.nameservers) {
+		log.Printf("Error: Failure to Forward DNS Request %q", err)
+		try++
+		nsid = (nsid+1)%len(s.nameservers)
+		goto Redo
+	}
+
+	log.Printf("Error: Failure to Forward DNS Request %q", err)
+	m := new(dns.Msg)
+	m.SetReply(req)
+	m.SetRcode(req, dns.RcodeServerFailure)
+	w.WriteMsg(m)
+}
+
 func (s *Server) getARecords(q dns.Question) (records []dns.RR, err error) {
 	var h string
 	name := strings.TrimSuffix(q.Name, ".")
@@ -398,7 +451,6 @@ func (s *Server) getARecords(q dns.Question) (records []dns.RR, err error) {
 		if err != nil {
 			return
 		}
-
 		records = append(records, &dns.A{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 15}, A: net.ParseIP(h)})
 	}
 
@@ -409,11 +461,9 @@ func (s *Server) getARecords(q dns.Question) (records []dns.RR, err error) {
 			if err != nil {
 				return
 			}
-
 			records = append(records, &dns.A{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 15}, A: net.ParseIP(h)})
 		}
 	}
-
 	return
 }
 
