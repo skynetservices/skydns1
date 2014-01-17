@@ -1,7 +1,11 @@
 #SkyDNS [![Build Status](https://travis-ci.org/skynetservices/skydns.png)](https://travis-ci.org/skynetservices/skydns)
-*Version 0.1.0*
+*Version 0.2.0*
 
 SkyDNS is a distributed service for announcement and discovery of services. It leverages Raft for high-availability and consensus, and utilizes DNS for queries to discover available services. This is done by leveraging SRV records in DNS, with special meaning given to subdomains, priorities and weights.
+
+SkyDNS will also act as a forwarding DNS proxy, so that you can set your SkyDNS instance as the primary DNS service in /etc/resolv.conf and SkyDNS will forward and proxy requests for which it is not authoritative.
+
+Besides serving SRV records, which include ALL the information you need to connect to your service, SkyDNS will also return A records.  This is useful if you already know what port a particular service is using, and you just want a list of IP addresses with known running instances.
 
 [Announcement Blog Post](http://blog.gopheracademy.com/skydns)
 
@@ -24,6 +28,7 @@ Which takes the following flags
 - -graphiteServer - When this flag is set to a Graphite Server URL:PORT, metrics will be posted to a graphite server
 - -stathatUser - When this flag is set to a valid StatHat user, metrics will be posted to that user's StatHat account periodically
 - -secret - When this variable is set, the http api will require an authorization header that matches the secret passed to skydns when it starts  
+- -nameserver - Nameserver address to forward (non-local) queries to e.g. "8.8.8.8:53,8.8.4.4:53"
 
 ##API
 ### Service Announcements
@@ -165,6 +170,48 @@ This is where we've changed things up a bit, notice we used the "*" wildcard for
 	east.*.testservice.production.skydns.local. 3531 IN SRV	20 33 9000 server24.
 	east.*.testservice.production.skydns.local. 3887 IN SRV	20 33 80   web3.site.com.
 	east.*.testservice.production.skydns.local. 3892 IN SRV	20 33 80   web4.site.com.
+
+
+####A Records
+To return A records, simply run a normal DNS query for a service matching the above patterns.
+
+Let's add some web servers to SkyDNS:
+
+	curl -X PUT -L http://localhost:8080/skydns/services/1011 -d '{"Name":"rails","Version":"1.0.0","Environment":"Production","Region":"East","Host":"127.0.0.10","Port":80,"TTL":400000}'
+	curl -X PUT -L http://localhost:8080/skydns/services/1012 -d '{"Name":"rails","Version":"1.0.0","Environment":"Production","Region":"East","Host":"127.0.0.11","Port":80,"TTL":400000}'
+	curl -X PUT -L http://localhost:8080/skydns/services/1013 -d '{"Name":"rails","Version":"1.0.0","Environment":"Production","Region":"West","Host":"127.0.0.12","Port":80,"TTL":400000}'
+	curl -X PUT -L http://localhost:8080/skydns/services/1014 -d '{"Name":"rails","Version":"1.0.0","Environment":"Production","Region":"West","Host":"127.0.0.13","Port":80,"TTL":400000}'
+
+Now do a normal DNS query:
+`dig rails.production.skydns.local`
+
+	; <<>> DiG 9.8.3-P1 <<>> rails.production.skydns.local
+	;; global options: +cmd
+	;; Got answer:
+	;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 4734
+	;; flags: qr rd; QUERY: 1, ANSWER: 4, AUTHORITY: 0, ADDITIONAL: 0
+	;; WARNING: recursion requested but not available
+
+	;; QUESTION SECTION:
+	;rails.production.skydns.local.	IN	A
+
+	;; ANSWER SECTION:
+	rails.production.skydns.local. 399918 IN A	127.0.0.10
+	rails.production.skydns.local. 399918 IN A	127.0.0.11
+	rails.production.skydns.local. 399918 IN A	127.0.0.12
+	rails.production.skydns.local. 399919 IN A	127.0.0.13
+
+	;; Query time: 0 msec
+	;; SERVER: 127.0.0.1#53(127.0.0.1)
+	;; WHEN: Fri Jan 17 11:52:29 2014
+	;; MSG SIZE  rcvd: 227
+
+Now you have a list of all known IP Addresses registered running the `rails` service name.  Because we're returning A records and not SRV records, there are no ports listed, so this is only useful when you're querying for services running on ports known to you in advance.   Notice, we didn't specify version or region, but we could have.
+
+####DNS Forwarding
+
+By specifying `-nameserver="8.8.8.8:53,8.8.4.4:53" on the `skydns` command line, you create a DNS forwarding proxy.  Requests for which SkyDNS isn't authoritative will be forwarded and proxied back to the client.  This means that you can set SkyDNS as the primary DNS server in /etc/resolv.conf and use it for both service discovery and normal DNS operations.  Please test this before relying on it in production, as there may be edge cases that don't work as planned.
+
 
 ## License
 The MIT License (MIT)
