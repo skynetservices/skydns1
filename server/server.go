@@ -412,6 +412,8 @@ func (s *Server) ServeDNSForward(w dns.ResponseWriter, req *dns.Msg) {
 	// TODO(miek): client timeouts, slight larger because we are recursing?
 	c := &dns.Client{Net: network}
 
+	// TODO(miek): add another random value so the client can not influence
+	// which server we choose?
 	// use request Id for "random" nameserver selection
 	nsid := int(req.Id) % len(s.nameservers)
 	try := 0
@@ -449,7 +451,6 @@ func (s *Server) getARecords(q dns.Question) (records []dns.RR, err error) {
 		if err != nil {
 			return
 		}
-
 		records = append(records, &dns.A{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 15}, A: net.ParseIP(h)})
 	}
 
@@ -460,11 +461,9 @@ func (s *Server) getARecords(q dns.Question) (records []dns.RR, err error) {
 			if err != nil {
 				return
 			}
-
 			records = append(records, &dns.A{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 15}, A: net.ParseIP(h)})
 		}
 	}
-
 	return
 }
 
