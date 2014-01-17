@@ -45,13 +45,6 @@ var (
 	removeServiceCount metrics.Counter
 )
 
-const (
-	rttUNREACHABLE = iota
-	rrtGOOD 
-	rttFAIR
-	rrtBAD
-)
-
 func init() {
 	// Register Raft Commands
 	raft.RegisterCommand(&AddServiceCommand{})
@@ -81,7 +74,6 @@ func init() {
 type Server struct {
 	members      []string // initial members to join with
 	nameservers  []string // nameservers to forward to
-	rtt          []int    // rtt for remote nameservers
 	domain       string
 	dnsAddr      string
 	httpAddr     string
