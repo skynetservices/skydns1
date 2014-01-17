@@ -72,6 +72,7 @@ func init() {
 type Server struct {
 	members      []string // initial members to join with
 	nameservers  []string // nameservers to forward to
+	rtt          []int    // rtt for remote nameservers
 	domain       string
 	dnsAddr      string
 	httpAddr     string
@@ -358,7 +359,7 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	log.Printf("Received DNS Request for %q from %q", q.Name, w.RemoteAddr())
 
 	// If the query does not fall in our s.domain, forward it
-	if strings.HasSuffix(q.Name, dns.Fqdn(s.domain)) {
+	if !strings.HasSuffix(q.Name, dns.Fqdn(s.domain)) {
 		s.ServeDNSForward(w, req)
 		return
 	}
@@ -395,6 +396,14 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 
 // ServeDNSForward forwards a request to a nameservers and returns the response.
 func (s *Server) ServeDNSForward(w dns.ResponseWriter, req *dns.Msg) {
+	if len(s.nameservers) == 0 {
+		log.Printf("Error: Failure to Forward DNS Request %q", dns.ErrServ)
+		m := new(dns.Msg)
+		m.SetReply(req)
+		m.SetRcode(req, dns.RcodeServerFailure)
+		w.WriteMsg(m)
+		return
+	}
 	network := "udp"
 	if _, ok := w.RemoteAddr().(*net.TCPAddr); ok {
 		network = "tcp"
@@ -402,11 +411,11 @@ func (s *Server) ServeDNSForward(w dns.ResponseWriter, req *dns.Msg) {
 	c := &dns.Client{Net: network}
 	// TODO(miek): fancy nameserver selection based an RTTs
 	r, _, err := c.Exchange(req, s.nameservers[0])
-
 	if err == nil {
 		w.WriteMsg(r)
 		return
 	}
+	log.Printf("Error: Failure to Forward DNS Request %q", err)
 	m := new(dns.Msg)
 	m.SetReply(req)
 	m.SetRcode(req, dns.RcodeServerFailure)

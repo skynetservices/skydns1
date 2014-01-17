@@ -40,7 +40,7 @@ func init() {
 	flag.StringVar(&graphiteServer, "graphiteServer", "", "Graphite Server connection string e.g. 127.0.0.1:2003")
 	flag.StringVar(&stathatUser, "stathatUser", "", "StatHat account for metrics")
 	flag.StringVar(&secret, "secret", "", "Shared secret for use with http api")
-	flag.StringVar(&nameserver, "nameserver", "", "Nameserver address to forward (non-local) queries to")
+	flag.StringVar(&nameserver, "nameserver", "", "Nameserver address to forward (non-local) queries to e.g. 8..8.8.8:53")
 }
 
 func main() {
