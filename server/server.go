@@ -410,12 +410,25 @@ func (s *Server) ServeDNSForward(w dns.ResponseWriter, req *dns.Msg) {
 		network = "tcp"
 	}
 	c := &dns.Client{Net: network}
-	// TODO(miek): fancy nameserver selection based an RTTs
-	r, _, err := c.Exchange(req, s.nameservers[0])
+
+	// use request Id for "random" nameserver selection
+	nsid := int(req.Id) % len(s.nameservers)
+	try := 0
+Redo:
+	r, _, err := c.Exchange(req, s.nameservers[nsid])
 	if err == nil {
+		//log.Printf("Forwarded DNS Request %q to %q", req.Question[0].Name, s.nameservers[nsid])
 		w.WriteMsg(r)
 		return
 	}
+	// Seen an error, this can only mean, "server not reached", try again
+	// but only if we have not exausted our nameservers
+	if try < len(s.nameservers) {
+		log.Printf("Error: Failure to Forward DNS Request %q", err)
+		nsid = (nsid+1)%len(s.nameservers)
+		goto Redo
+	}
+
 	log.Printf("Error: Failure to Forward DNS Request %q", err)
 	m := new(dns.Msg)
 	m.SetReply(req)
