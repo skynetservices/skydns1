@@ -711,7 +711,7 @@ func TestDNS(t *testing.T) {
 	for _, tc := range dnsTestCases {
 		m := new(dns.Msg)
 		m.SetQuestion(tc.Question, dns.TypeSRV)
-		resp, _, err := c.Exchange(m, "localhost:" + StrPort)
+		resp, _, err := c.Exchange(m, "localhost:"+StrPort)
 
 		if err != nil {
 			t.Fatal(err)
@@ -764,7 +764,7 @@ func TestDNSARecords(t *testing.T) {
 	c := new(dns.Client)
 	m := new(dns.Msg)
 	m.SetQuestion("skydns.local.", dns.TypeA)
-	resp, _, err := c.Exchange(m, "localhost:" + StrPort)
+	resp, _, err := c.Exchange(m, "localhost:"+StrPort)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -776,11 +776,11 @@ func TestDNSARecords(t *testing.T) {
 func TestDNSForward(t *testing.T) {
 	s := newTestServer("", "", "8.8.8.8:53")
 	defer s.Stop()
-	
+
 	c := new(dns.Client)
 	m := new(dns.Msg)
 	m.SetQuestion("www.example.com.", dns.TypeA)
-	resp, _, err := c.Exchange(m, "localhost:" + StrPort)
+	resp, _, err := c.Exchange(m, "localhost:"+StrPort)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -789,7 +789,7 @@ func TestDNSForward(t *testing.T) {
 	}
 	// TCP
 	c.Net = "tcp"
-	resp, _, err = c.Exchange(m, "localhost:" + StrPort)
+	resp, _, err = c.Exchange(m, "localhost:"+StrPort)
 	if err != nil {
 		t.Fatal(err)
 	}

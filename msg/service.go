@@ -62,7 +62,7 @@ func (c Callback) Call(s Service) {
 	if err != nil {
 		return
 	}
-	req, err := http.NewRequest("DELETE", "http://" + c.Reply + ":" + strconv.Itoa(int(c.Port)) + "/skydns/callbacks/" + c.UUID, bytes.NewBuffer(b))
+	req, err := http.NewRequest("DELETE", "http://"+c.Reply+":"+strconv.Itoa(int(c.Port))+"/skydns/callbacks/"+c.UUID, bytes.NewBuffer(b))
 	if err != nil {
 		log.Println("Failed to create req.", err.Error)
 		return
