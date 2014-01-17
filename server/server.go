@@ -152,7 +152,7 @@ func (s *Server) HTTPAddr() string { return s.httpAddr }
 // Start starts a DNS server and blocks waiting to be killed.
 func (s *Server) Start() (*sync.WaitGroup, error) {
 	var err error
-	log.Printf("Initializing Server. DNS Addr: %q, HTTP Addr: %q, Data Dir: %q", s.dnsAddr, s.httpAddr, s.dataDir)
+	log.Printf("Initializing Server. DNS Addr: %q, HTTP Addr: %q, Data Dir: %q, Forwarders: %q", s.dnsAddr, s.httpAddr, s.dataDir, s.nameservers)
 
 	// Initialize and start Raft server.
 	transporter := raft.NewHTTPTransporter("/raft")
