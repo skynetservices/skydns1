@@ -38,10 +38,12 @@ func writeService(c *cli.Context, service *msg.Service) {
 
 func newClientFromContext(c *cli.Context) (*client.Client, error) {
 	var (
-		base   = c.GlobalString("host")
-		secret = c.GlobalString("secret")
+		base      = c.GlobalString("host")
+		dnsport   = c.GlobalInt("dnsport")
+		dnsdomain = c.GlobalString("dnsdomain")
+		secret    = c.GlobalString("secret")
 	)
-	return client.NewClient(base, secret)
+	return client.NewClient(base, secret, dnsdomain, dnsport)
 }
 
 func loadCommands(app *cli.App) {
@@ -50,7 +52,23 @@ func loadCommands(app *cli.App) {
 
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{"json", "output to json"},
-		cli.StringFlag{"host", os.Getenv("SKYDNS"), "url to SkyDNS's http endpoints (defaults to environment var SKYDNS)"},
+		cli.StringFlag{"host", os.Getenv("SKYDNS"), "url to SkyDNS's HTTP endpoints (defaults to env. var. SKYDNS)"},
+		cli.StringFlag{"dnsport", 
+			func() string {
+				x := os.Getenv("SKYDNS_DNSPORT")
+				if x == "" {
+					x = "53"
+				}
+				return x
+			}(), "DNS port of SkyDNS's DNS endpoint (defaults to env. var. SKYDNS_DNSPORT or 53)"},
+		cli.StringFlag{"dnsdomain",
+			func() string {
+				x := os.Getenv("SKYDNS_DNSDOMAIN")
+				if x == "" {
+					x = "skydns.local"
+				}
+				return x
+			}(), "DNS domain of SkyDNS (defaults to env. var. SKYDNS_DNSDOMAIN or skydns.local)"},
 		cli.StringFlag{"secret", "", "secret to authenticate with"},
 	}
 

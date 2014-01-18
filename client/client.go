@@ -8,7 +8,9 @@ import (
 	"github.com/miekg/dns"
 	"github.com/skynetservices/skydns/msg"
 	"io"
+	"net"
 	"net/http"
+	"strconv"
 )
 
 var (
@@ -20,31 +22,38 @@ var (
 
 type (
 	Client struct {
-		base   string
-		dnsport int
-		secret string
-		h      *http.Client
-		d      *dns.Client
+		base    string
+		secret  string
+		h       *http.Client
+		basedns string
+		domain  string
+		d       *dns.Client
 	}
 
 	NameCount map[string]int
 )
 
-// NewClient creates a new skydns client with the specificed host address
-func NewClient(base, secret string, dnsport int) (*Client, error) {
+// NewClient creates a new skydns client with the specificed host address and
+// dns port.
+func NewClient(base, secret, dnsdomain string, dnsport int) (*Client, error) {
 	if base == "" {
 		return nil, ErrNoHttpAddress
 	}
 	if dnsport == 0 {
 		dnsport = 53
 	}
+	host, _, err := net.SplitHostPort(base[6:])
+	if err != nil {
+		// TODO(miek): https?
+	}
 
 	return &Client{
-		base:   base,
-		dnsport: dnsport,
-		secret: secret,
-		h:      &http.Client{},
-		d:      &dns.Client{},
+		base:    base,
+		basedns: net.JoinHostPort(host, strconv.Itoa(dnsport)),
+		domain:  "." + dns.Fqdn(dnsdomain),
+		secret:  secret,
+		h:       &http.Client{},
+		d:       &dns.Client{},
 	}, nil
 }
 
@@ -173,6 +182,21 @@ func (c *Client) GetRegions() (NameCount, error) {
 	return out, nil
 }
 
+func (c *Client) GetRegionsDNS() (NameCount, error) {
+	req, err := c.newRequestDNS("regions", dns.TypeSRV)
+	if err != nil {
+		return nil, err
+	}
+	resp, _, err := c.d.Exchange(req, c.basedns)
+	if err != nil {
+		return nil, err
+	}
+
+	var out NameCount
+	resp = resp
+	return out, nil
+}
+
 func (c *Client) GetEnvironments() (NameCount, error) {
 	req, err := c.newRequest("GET", fmt.Sprintf("%s/skydns/environments/", c.base), nil)
 	if err != nil {
@@ -230,4 +254,10 @@ func (c *Client) newRequest(method, url string, body io.Reader) (*http.Request, 
 		req.Header.Add("Authorization", c.secret)
 	}
 	return req, err
+}
+
+func (c *Client) newRequestDNS(qname string, qtype uint16) (*dns.Msg, error) {
+	m := new(dns.Msg)
+	m.SetQuestion(qname, qtype)
+	return m, nil
 }
