@@ -50,7 +50,7 @@ func loadCommands(app *cli.App) {
 
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{"json", "output to json"},
-		cli.StringFlag{"host", os.Getenv("SKYDNS_HTTP_ADDR"), "url to skydns's http endpoints ( defaults to environment var SKYDNS_HTTP_ADDR )"},
+		cli.StringFlag{"host", os.Getenv("SKYDNS"), "url to SkyDNS's http endpoints (defaults to environment var SKYDNS)"},
 		cli.StringFlag{"secret", "", "secret to authenticate with"},
 	}
 

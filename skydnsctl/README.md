@@ -10,10 +10,10 @@
 
 ### Connect to your skynds http endpoint
 To connect to the skydns http endpoint for issuing commands set the environment 
-variable `SKYDNS_HTTP_ADDR` or you can run the cli app with the `--host` flag.
+variable `SKYDNS` or you can run the cli app with the `--host` flag.
 
 ```bash
-expose SKYDNS_HTTP_ADDR="http://localhost:8080"
+expose SKYDNS="http://localhost:8080"
 # OR
 skydnsctl --host "http://localhost:8080" 1001
 ```
