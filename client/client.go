@@ -17,11 +17,15 @@ var (
 	ErrConflictingUUID = errors.New("Conflicting UUID")
 )
 
-type Client struct {
-	base   string
-	secret string
-	c      *http.Client
-}
+type (
+	Client struct {
+		base   string
+		secret string
+		c      *http.Client
+	}
+
+	NameCount map[string]int
+)
 
 // NewClient creates a new skydns client with the specificed host address
 func NewClient(base, secret string) (*Client, error) {
@@ -120,6 +124,92 @@ func (c *Client) Update(uuid string, ttl uint32) error {
 		defer resp.Body.Close()
 	}
 	return nil
+}
+
+func (c *Client) GetAllServices() ([]*msg.Service, error) {
+	req, err := c.newRequest("GET", c.joinUrl(""), nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
+	var out []*msg.Service
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *Client) GetRegions() (NameCount, error) {
+	req, err := c.newRequest("GET", fmt.Sprintf("%s/skydns/regions/", c.base), nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
+
+	var out NameCount
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *Client) GetEnvironments() (NameCount, error) {
+	req, err := c.newRequest("GET", fmt.Sprintf("%s/skydns/environments/", c.base), nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
+
+	var out NameCount
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *Client) AddCallback(uuid string, cb *msg.Callback) error {
+	buf := bytes.NewBuffer(nil)
+	if err := json.NewEncoder(buf).Encode(cb); err != nil {
+		return err
+	}
+	req, err := c.newRequest("PUT", fmt.Sprintf("%s/skydns/callbacks/%s", c.base, uuid), buf)
+	if err != nil {
+		return err
+	}
+	resp, err := c.c.Do(req)
+	if err != nil {
+		return err
+	}
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
+
+	switch resp.StatusCode {
+	case http.StatusCreated:
+		return nil
+	case http.StatusNotFound:
+		return ErrServiceNotFound
+	default:
+		return ErrInvalidResponse
+	}
 }
 
 func (c *Client) joinUrl(uuid string) string {
