@@ -23,7 +23,7 @@ type (
 		base   string
 		dnsport int
 		secret string
-		c      *http.Client
+		h      *http.Client
 		d      *dns.Client
 	}
 
@@ -43,7 +43,7 @@ func NewClient(base, secret string, dnsport int) (*Client, error) {
 		base:   base,
 		dnsport: dnsport,
 		secret: secret,
-		c:      &http.Client{},
+		h:      &http.Client{},
 		d:      &dns.Client{},
 	}, nil
 }
@@ -57,7 +57,7 @@ func (c *Client) Add(uuid string, s *msg.Service) error {
 	if err != nil {
 		return err
 	}
-	resp, err := c.c.Do(req)
+	resp, err := c.h.Do(req)
 	if err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func (c *Client) Delete(uuid string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := c.c.Do(req)
+	resp, err := c.h.Do(req)
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func (c *Client) Get(uuid string) (*msg.Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.c.Do(req)
+	resp, err := c.h.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func (c *Client) Update(uuid string, ttl uint32) error {
 	if err != nil {
 		return err
 	}
-	resp, err := c.c.Do(req)
+	resp, err := c.h.Do(req)
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func (c *Client) GetAllServices() ([]*msg.Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.c.Do(req)
+	resp, err := c.h.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func (c *Client) GetRegions() (NameCount, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.c.Do(req)
+	resp, err := c.h.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +178,7 @@ func (c *Client) GetEnvironments() (NameCount, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.c.Do(req)
+	resp, err := c.h.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func (c *Client) AddCallback(uuid string, cb *msg.Callback) error {
 	if err != nil {
 		return err
 	}
-	resp, err := c.c.Do(req)
+	resp, err := c.h.Do(req)
 	if err != nil {
 		return err
 	}
