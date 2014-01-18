@@ -138,9 +138,12 @@ func (c *Client) GetAllServices() ([]*msg.Service, error) {
 	if resp.Body != nil {
 		defer resp.Body.Close()
 	}
+
 	var out []*msg.Service
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return nil, err
+	if resp.StatusCode == http.StatusOK {
+		if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+			return nil, err
+		}
 	}
 	return out, nil
 }
