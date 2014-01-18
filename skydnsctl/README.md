@@ -14,7 +14,7 @@ variable `SKYDNS` or you can run the cli app with the `--host` flag.
 ```bash
 export SKYDNS="http://localhost:8080"
 # OR
-skydnsctl --host "http://localhost:8080" 1001
+skydnsctl --host "http://localhost:8080"
 ```
 
 ### SkyDNS DNS endpoint
