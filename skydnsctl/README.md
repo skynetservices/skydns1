@@ -1,22 +1,26 @@
-## skydnsctl - cli tool for interacting with skynds
+## skydnsctl - cli tool for interacting with SkyDNS
 
-
-#### Commands:
+#### Commands
 * add
 * get
 * update
 * delete
 
 
-### Connect to your skynds http endpoint
+### Connect to your SkydNS HTTP endpoint
 To connect to the skydns http endpoint for issuing commands set the environment 
 variable `SKYDNS` or you can run the cli app with the `--host` flag.
 
 ```bash
-expose SKYDNS="http://localhost:8080"
+export SKYDNS="http://localhost:8080"
 # OR
 skydnsctl --host "http://localhost:8080" 1001
 ```
+
+### SkyDNS DNS endpoint
+
+For the DNS discovery port 53 is assumed on the 
+
 
 #### Add a new service
 
