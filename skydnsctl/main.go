@@ -75,7 +75,7 @@ func loadCommands(app *cli.App) {
 	app.Commands = []cli.Command{
 		{
 			Name:   "list",
-			Usage:  "list a new service from skydns",
+			Usage:  "list a service from skydns",
 			Action: getAction,
 		},
 		{
