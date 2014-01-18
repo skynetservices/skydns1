@@ -47,7 +47,7 @@ func newClientFromContext(c *cli.Context) (*client.Client, error) {
 }
 
 func loadCommands(app *cli.App) {
-	// default to getting a service
+	// default to listing a service
 	app.Action = getAction
 
 	app.Flags = []cli.Flag{
@@ -77,6 +77,7 @@ func loadCommands(app *cli.App) {
 			Name:   "list",
 			Usage:  "list a service from skydns",
 			Action: getAction,
+			Flags: []cli.Flag{cli.BoolFlag{"d", "use DNS instead of HTTP"}},
 		},
 		{
 			Name:   "add",
