@@ -12,16 +12,6 @@ import (
 )
 
 func (s *Server) getRegionsHTTPHandler(w http.ResponseWriter, req *http.Request) {
-	var secret string
-
-	//read the authorization header to get the secret.
-	secret = req.Header.Get("Authorization")
-
-	if err := s.authenticate(secret); err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
-		return
-	}
-
 	srv, err := s.registry.Get("*")
 	if err != nil {
 		switch err {
@@ -51,16 +41,6 @@ func (s *Server) getRegionsHTTPHandler(w http.ResponseWriter, req *http.Request)
 }
 
 func (s *Server) getEnvironmentsHTTPHandler(w http.ResponseWriter, req *http.Request) {
-	var secret string
-
-	//read the authorization header to get the secret.
-	secret = req.Header.Get("Authorization")
-
-	if err := s.authenticate(secret); err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
-		return
-	}
-
 	srv, err := s.registry.Get("*")
 	if err != nil {
 		switch err {
@@ -90,16 +70,6 @@ func (s *Server) getEnvironmentsHTTPHandler(w http.ResponseWriter, req *http.Req
 }
 
 func (s *Server) getServicesHTTPHandler(w http.ResponseWriter, req *http.Request) {
-	var secret string
-
-	//read the authorization header to get the secret.
-	secret = req.Header.Get("Authorization")
-
-	if err := s.authenticate(secret); err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
-		return
-	}
-
 	log.Println(req.URL.Path)
 	log.Println(s.raftServer.Leader())
 

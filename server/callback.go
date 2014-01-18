@@ -17,13 +17,6 @@ func (s *Server) addCallbackHTTPHandler(w http.ResponseWriter, req *http.Request
 
 	var uuid string
 	var ok bool
-	var secret string
-
-	secret = req.Header.Get("Authorization")
-	if err := s.authenticate(secret); err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
-		return
-	}
 
 	if uuid, ok = vars["uuid"]; !ok {
 		http.Error(w, "UUID required", http.StatusBadRequest)
