@@ -43,15 +43,15 @@ func NewClient(base, secret, dnsdomain string, dnsport int) (*Client, error) {
 	if dnsport == 0 {
 		dnsport = 53
 	}
-	host, _, err := net.SplitHostPort(base[6:])
+	host, _, err := net.SplitHostPort(base[7:])
 	if err != nil {
 		// TODO(miek): https?
 	}
-
+	// TODO(miek): might need to do a LookUp for the name if the server is not specified as an address.
 	return &Client{
 		base:    base,
 		basedns: net.JoinHostPort(host, strconv.Itoa(dnsport)),
-		domain:  "." + dns.Fqdn(dnsdomain),
+		domain:  dns.Fqdn(dnsdomain),
 		secret:  secret,
 		h:       &http.Client{},
 		d:       &dns.Client{},
@@ -163,6 +163,24 @@ func (c *Client) GetAllServices() ([]*msg.Service, error) {
 	return out, nil
 }
 
+func (c *Client) GetAllServicesDNS() ([]*msg.Service, error) {
+	req, err := c.newRequestDNS("", dns.TypeSRV)
+	if err != nil {
+		return nil, err
+	}
+	resp, _, err := c.d.Exchange(req, c.basedns)
+	if err != nil {
+		return nil, err
+	}
+	// Handle UUID.skydns.local additional section stuff? TODO(miek)
+	s := make([]*msg.Service, len(resp.Answer))
+	for i, r := range resp.Answer {
+		s[i] = &msg.Service{Name: r.String()} // dump in Name, TODO(miek)
+	}
+	return s, nil
+}
+
+
 func (c *Client) GetRegions() (NameCount, error) {
 	req, err := c.newRequest("GET", fmt.Sprintf("%s/skydns/regions/", c.base), nil)
 	if err != nil {
@@ -180,21 +198,6 @@ func (c *Client) GetRegions() (NameCount, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return nil, err
 	}
-	return out, nil
-}
-
-func (c *Client) GetRegionsDNS() (NameCount, error) {
-	req, err := c.newRequestDNS("regions", dns.TypeSRV)
-	if err != nil {
-		return nil, err
-	}
-	resp, _, err := c.d.Exchange(req, c.basedns)
-	if err != nil {
-		return nil, err
-	}
-	// TODO(miek): soon! reuse name count for DNS replies too
-	var out NameCount
-	resp = resp
 	return out, nil
 }
 
@@ -259,6 +262,10 @@ func (c *Client) newRequest(method, url string, body io.Reader) (*http.Request, 
 
 func (c *Client) newRequestDNS(qname string, qtype uint16) (*dns.Msg, error) {
 	m := new(dns.Msg)
-	m.SetQuestion(qname, qtype)
+	if qname == "" {
+		m.SetQuestion(c.domain, qtype)
+	} else {
+		m.SetQuestion(qname + "." + c.domain, qtype)
+	}
 	return m, nil
 }

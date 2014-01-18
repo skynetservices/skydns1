@@ -186,7 +186,13 @@ func getAction(c *cli.Context) {
 
 		writeService(c, service)
 	} else { // or get all services
-		services, err := skydns.GetAllServices()
+		var services []*msg.Service
+		var err error
+		if skydns.DNS {
+			services, err = skydns.GetAllServicesDNS()
+		} else {
+			services, err = skydns.GetAllServices()
+		}
 		if err != nil {
 			writeError(err)
 		}
