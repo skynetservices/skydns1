@@ -28,13 +28,14 @@ type (
 		basedns string
 		domain  string
 		d       *dns.Client
+		DNS	bool // if true use the DNS when listing servies
 	}
 
 	NameCount map[string]int
 )
 
 // NewClient creates a new skydns client with the specificed host address and
-// dns port.
+// DNS port.
 func NewClient(base, secret, dnsdomain string, dnsport int) (*Client, error) {
 	if base == "" {
 		return nil, ErrNoHttpAddress

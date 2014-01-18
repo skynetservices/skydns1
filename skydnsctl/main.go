@@ -43,7 +43,11 @@ func newClientFromContext(c *cli.Context) (*client.Client, error) {
 		dnsdomain = c.GlobalString("dnsdomain")
 		secret    = c.GlobalString("secret")
 	)
-	return client.NewClient(base, secret, dnsdomain, dnsport)
+	s, e := client.NewClient(base, secret, dnsdomain, dnsport)
+	if e == nil {
+		s.DNS = c.Bool("d") // currently only defined when listing services
+	}
+	return s, e
 }
 
 func loadCommands(app *cli.App) {
@@ -53,7 +57,7 @@ func loadCommands(app *cli.App) {
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{"json", "output to json"},
 		cli.StringFlag{"host", os.Getenv("SKYDNS"), "url to SkyDNS's HTTP endpoints (defaults to env. var. SKYDNS)"},
-		cli.StringFlag{"dnsport", 
+		cli.StringFlag{"dnsport",
 			func() string {
 				x := os.Getenv("SKYDNS_DNSPORT")
 				if x == "" {
@@ -77,7 +81,7 @@ func loadCommands(app *cli.App) {
 			Name:   "list",
 			Usage:  "list a service from skydns",
 			Action: getAction,
-			Flags: []cli.Flag{cli.BoolFlag{"d", "use DNS instead of HTTP"}},
+			Flags:  []cli.Flag{cli.BoolFlag{"d", "use DNS instead of HTTP"}},
 		},
 		{
 			Name:   "add",
