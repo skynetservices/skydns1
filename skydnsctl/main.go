@@ -15,6 +15,27 @@ func writeError(err error) {
 	os.Exit(1)
 }
 
+func writeService(c *cli.Context, service *msg.Service) {
+	if c.GlobalBool("json") {
+		if err := json.NewEncoder(os.Stdout).Encode(service); err != nil {
+			writeError(err)
+		}
+	} else {
+		fmt.Printf("UUID: %s\nName: %s\nHost: %s\nPort: %d\nEnvironment: %s\nRegion: %s\nVersion: %s\n\n",
+			service.UUID,
+			service.Name,
+			service.Host,
+			service.Port,
+			service.Environment,
+			service.Region,
+			service.Version)
+
+		fmt.Printf("TTL %d\nRemaining TTL: %d\n",
+			service.TTL,
+			service.RemainingTTL())
+	}
+}
+
 func newClientFromContext(c *cli.Context) (*client.Client, error) {
 	var (
 		base   = c.GlobalString("host")
@@ -119,39 +140,33 @@ func updateAction(c *cli.Context) {
 	fmt.Printf("%s ttl updated to %d\n", uuid, ttl)
 }
 
-// Get a existing service from skydns
+// Get a existing service or list all services in skydns
 //
-// format: skydnsctl 1001
+// format: skydnsctl || skydnsctl 1001
 func getAction(c *cli.Context) {
 	skydns, err := newClientFromContext(c)
 	if err != nil {
 		writeError(err)
 	}
 
-	uuid := c.Args().Get(0)
-
-	service, err := skydns.Get(uuid)
-	if err != nil {
-		writeError(err)
-	}
-
-	if c.GlobalBool("json") {
-		if err := json.NewEncoder(os.Stdout).Encode(service); err != nil {
+	// Get a specific service
+	if uuid := c.Args().Get(0); uuid != "" {
+		service, err := skydns.Get(uuid)
+		if err != nil {
 			writeError(err)
 		}
-	} else {
-		fmt.Printf("UUID: %s\nName: %s\nHost: %s\nPort: %d\nEnvironment: %s\nRegion: %s\nVersion: %s\n\n",
-			service.UUID,
-			service.Name,
-			service.Host,
-			service.Port,
-			service.Environment,
-			service.Region,
-			service.Version)
 
-		fmt.Printf("TTL %d\nRemaining TTL: %d\n",
-			service.TTL,
-			service.RemainingTTL())
+		writeService(c, service)
+	} else { // or get all services
+		services, err := skydns.GetAllServices()
+		if err != nil {
+			writeError(err)
+		}
+
+		for _, service := range services {
+			writeService(c, service)
+			fmt.Printf("\n----\n")
+		}
 	}
 }
 

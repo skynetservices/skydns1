@@ -43,6 +43,24 @@ TTL 492
 Remaining TTL: 492
 ```
 
+#### Get all services
+
+```bash
+skydnsctl
+UUID: 1004
+Name: TestService
+Host: web4.site.com
+Port: 80
+Environment: Production
+Region: West
+Version: 1.0.0
+
+TTL 141
+Remaining TTL: 141
+
+----
+```
+
 #### Get an existing service with json output
 
 ```bash
