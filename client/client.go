@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/miekg/dns"
 	"github.com/skynetservices/skydns/msg"
 	"io"
 	"net/http"
@@ -20,23 +21,30 @@ var (
 type (
 	Client struct {
 		base   string
+		dnsport int
 		secret string
 		c      *http.Client
+		d      *dns.Client
 	}
 
 	NameCount map[string]int
 )
 
 // NewClient creates a new skydns client with the specificed host address
-func NewClient(base, secret string) (*Client, error) {
+func NewClient(base, secret string, dnsport int) (*Client, error) {
 	if base == "" {
 		return nil, ErrNoHttpAddress
+	}
+	if dnsport == 0 {
+		dnsport = 53
 	}
 
 	return &Client{
 		base:   base,
+		dnsport: dnsport,
 		secret: secret,
 		c:      &http.Client{},
+		d:      &dns.Client{},
 	}, nil
 }
 
