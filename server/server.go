@@ -121,21 +121,23 @@ func NewServer(members []string, domain string, dnsAddr string, httpAddr string,
 	// DNS
 	s.dnsHandler.Handle(".", s)
 
-	// API Routes
-	s.router.HandleFunc("/skydns/services/{uuid}", s.addServiceHTTPHandler).Methods("PUT")
-	s.router.HandleFunc("/skydns/services/{uuid}", s.getServiceHTTPHandler).Methods("GET")
-	s.router.HandleFunc("/skydns/services/{uuid}", s.removeServiceHTTPHandler).Methods("DELETE")
-	s.router.HandleFunc("/skydns/services/{uuid}", s.updateServiceHTTPHandler).Methods("PATCH")
+	authWrapper := s.authHTTPWrapper
 
-	s.router.HandleFunc("/skydns/callbacks/{uuid}", s.addCallbackHTTPHandler).Methods("PUT")
+	// API Routes
+	s.router.HandleFunc("/skydns/services/{uuid}", authWrapper(s.addServiceHTTPHandler)).Methods("PUT")
+	s.router.HandleFunc("/skydns/services/{uuid}", authWrapper(s.getServiceHTTPHandler)).Methods("GET")
+	s.router.HandleFunc("/skydns/services/{uuid}", authWrapper(s.removeServiceHTTPHandler)).Methods("DELETE")
+	s.router.HandleFunc("/skydns/services/{uuid}", authWrapper(s.updateServiceHTTPHandler)).Methods("PATCH")
+
+	s.router.HandleFunc("/skydns/callbacks/{uuid}", authWrapper(s.addCallbackHTTPHandler)).Methods("PUT")
 
 	// External API Routes
 	// /skydns/services #list all services
-	s.router.HandleFunc("/skydns/services/", s.getServicesHTTPHandler).Methods("GET")
+	s.router.HandleFunc("/skydns/services/", authWrapper(s.getServicesHTTPHandler)).Methods("GET")
 	// /skydns/regions #list all regions
-	s.router.HandleFunc("/skydns/regions/", s.getRegionsHTTPHandler).Methods("GET")
+	s.router.HandleFunc("/skydns/regions/", authWrapper(s.getRegionsHTTPHandler)).Methods("GET")
 	// /skydns/environnments #list all environments
-	s.router.HandleFunc("/skydns/environments/", s.getEnvironmentsHTTPHandler).Methods("GET")
+	s.router.HandleFunc("/skydns/environments/", authWrapper(s.getEnvironmentsHTTPHandler)).Methods("GET")
 
 	// Raft Routes
 	s.router.HandleFunc("/raft/join", s.joinHandler).Methods("POST")
@@ -638,15 +640,6 @@ func (s *Server) addServiceHTTPHandler(w http.ResponseWriter, req *http.Request)
 
 	var uuid string
 	var ok bool
-	var secret string
-
-	//read the authorization header to get the secret.
-	secret = req.Header.Get("Authorization")
-
-	if err := s.authenticate(secret); err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
-		return
-	}
 
 	if uuid, ok = vars["uuid"]; !ok {
 		http.Error(w, "UUID required", http.StatusBadRequest)
@@ -691,15 +684,6 @@ func (s *Server) removeServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 
 	var uuid string
 	var ok bool
-	var secret string
-
-	//read the authorization header to get the secret.
-	secret = req.Header.Get("Authorization")
-
-	if err := s.authenticate(secret); err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
-		return
-	}
 
 	if uuid, ok = vars["uuid"]; !ok {
 		http.Error(w, "UUID required", http.StatusBadRequest)
@@ -727,15 +711,6 @@ func (s *Server) updateServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 
 	var uuid string
 	var ok bool
-	var secret string
-
-	//read the authorization header to get the secret.
-	secret = req.Header.Get("Authorization")
-
-	if err := s.authenticate(secret); err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
-		return
-	}
 
 	if uuid, ok = vars["uuid"]; !ok {
 		http.Error(w, "UUID required", http.StatusBadRequest)
@@ -768,15 +743,6 @@ func (s *Server) getServiceHTTPHandler(w http.ResponseWriter, req *http.Request)
 
 	var uuid string
 	var ok bool
-	var secret string
-
-	//read the authorization header to get the secret.
-	secret = req.Header.Get("Authorization")
-
-	if err := s.authenticate(secret); err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
-		return
-	}
 
 	if uuid, ok = vars["uuid"]; !ok {
 		http.Error(w, "UUID required", http.StatusBadRequest)
@@ -801,4 +767,22 @@ func (s *Server) getServiceHTTPHandler(w http.ResponseWriter, req *http.Request)
 	if err := json.NewEncoder(w).Encode(serv); err != nil {
 		log.Println("Error: ", err)
 	}
+}
+
+// secrethttphandlerwrapper will wrap a standard handler
+// if the secret is specified for the server
+func (s *Server) authHTTPWrapper(handler http.HandlerFunc) http.HandlerFunc {
+	if s.secret != "" {
+		return func(w http.ResponseWriter, req *http.Request) {
+			//read the authorization header to get the secret.
+			secret := req.Header.Get("Authorization")
+
+			if err := s.authenticate(secret); err != nil {
+				http.Error(w, err.Error(), http.StatusForbidden)
+				return
+			}
+			handler(w, req)
+		}
+	}
+	return handler
 }
