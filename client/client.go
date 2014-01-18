@@ -1,0 +1,135 @@
+package client
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"github.com/skynetservices/skydns/msg"
+	"io"
+	"net/http"
+)
+
+var (
+	ErrNoHttpAddress   = errors.New("No HTTP address specified")
+	ErrInvalidResponse = errors.New("Invalid HTTP response")
+	ErrServiceNotFound = errors.New("Service not found")
+	ErrConflictingUUID = errors.New("Conflicting UUID")
+)
+
+type Client struct {
+	base   string
+	secret string
+	c      *http.Client
+}
+
+// NewClient creates a new skydns client with the specificed host address
+func NewClient(base, secret string) (*Client, error) {
+	if base == "" {
+		return nil, ErrNoHttpAddress
+	}
+
+	return &Client{
+		base:   base,
+		secret: secret,
+		c:      &http.Client{},
+	}, nil
+}
+
+func (c *Client) Add(uuid string, s *msg.Service) error {
+	b := bytes.NewBuffer(nil)
+	if err := json.NewEncoder(b).Encode(s); err != nil {
+		return err
+	}
+	req, err := c.newRequest("PUT", c.joinUrl(uuid), b)
+	if err != nil {
+		return err
+	}
+	resp, err := c.c.Do(req)
+	if err != nil {
+		return err
+	}
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
+
+	switch resp.StatusCode {
+	case http.StatusCreated:
+		return nil
+	case http.StatusConflict:
+		return ErrConflictingUUID
+	default:
+		return ErrInvalidResponse
+	}
+}
+
+func (c *Client) Delete(uuid string) error {
+	req, err := c.newRequest("DELETE", c.joinUrl(uuid), nil)
+	if err != nil {
+		return err
+	}
+	resp, err := c.c.Do(req)
+	if err != nil {
+		return err
+	}
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
+	return nil
+}
+
+func (c *Client) Get(uuid string) (*msg.Service, error) {
+	req, err := c.newRequest("GET", c.joinUrl(uuid), nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
+	switch resp.StatusCode {
+	case http.StatusOK:
+		break
+	case http.StatusNotFound:
+		return nil, ErrServiceNotFound
+	default:
+		return nil, ErrInvalidResponse
+	}
+
+	var s *msg.Service
+	if err := json.NewDecoder(resp.Body).Decode(&s); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+func (c *Client) Update(uuid string, ttl uint32) error {
+	b := bytes.NewBuffer([]byte(fmt.Sprintf(`{"TTL":%d}`, ttl)))
+	req, err := c.newRequest("PATCH", c.joinUrl(uuid), b)
+	if err != nil {
+		return err
+	}
+	resp, err := c.c.Do(req)
+	if err != nil {
+		return err
+	}
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
+	return nil
+}
+
+func (c *Client) joinUrl(uuid string) string {
+	return fmt.Sprintf("%s/skydns/services/%s", c.base, uuid)
+}
+
+func (c *Client) newRequest(method, url string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequest(method, url, body)
+	if c.secret != "" {
+		req.Header.Add("Authorization", c.secret)
+	}
+	return req, err
+}
