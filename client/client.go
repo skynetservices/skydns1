@@ -192,7 +192,7 @@ func (c *Client) GetRegionsDNS() (NameCount, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	// TODO(miek): soon! reuse name count for DNS replies too
 	var out NameCount
 	resp = resp
 	return out, nil
