@@ -36,7 +36,8 @@ Which takes the following flags
 - -graphiteServer - When this flag is set to a Graphite Server URL:PORT, metrics will be posted to a graphite server
 - -stathatUser - When this flag is set to a valid StatHat user, metrics will be posted to that user's StatHat account periodically
 - -secret - When this variable is set, the HTTP api will require an authorization header that matches the secret passed to skydns when it starts  
-- -nameserver - Nameserver address to forward (non-local) queries to e.g. "8.8.8.8:53,8.8.4.4:53", in other words an IP:PORT where multiple nameserver maybe listed, separated by a comma "`,`".
+- -nameserver - Nameserver address to forward (non-local) queries to e.g. "8.8.8.8:53,8.8.4.4:53", in other words an IP:PORT, where multiple nameservers maybe listed separated by a comma "`,`". If this list is empty,
+SkyDNS will parse /etc/resolv.conf and will use the nameservers listed there.
 
 ##API
 ### Service Announcements

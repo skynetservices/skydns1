@@ -7,6 +7,7 @@ package main
 import (
 	"flag"
 	"github.com/goraft/raft"
+	"github.com/miekg/dns"
 	"github.com/rcrowley/go-metrics"
 	"github.com/rcrowley/go-metrics/stathat"
 	"github.com/skynetservices/skydns/server"
@@ -48,6 +49,18 @@ func main() {
 	raft.SetLogLevel(0)
 	flag.Parse()
 	nameservers := strings.Split(nameserver, ",")
+	if len(nameservers) == 0 {
+		nameservers = make([]string, 0)
+		config, err := dns.ClientConfigFromFile("/etc/resolv.conf")
+		if err != nil {
+			for _, s := range config.Servers {
+				nameservers = append(nameservers, net.JoinHostPort(s, config.Port))
+			}
+		} else {
+			log.Fatal(err)
+			return
+		}
+	}
 
 	if discover {
 		ns, err := net.LookupNS(domain)
