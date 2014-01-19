@@ -168,7 +168,6 @@ func (c *Client) GetAllServicesDNS() ([]*msg.Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	// TODO(miek): v4 and v6, do in parallel see who's first?
 	resp, _, err := c.d.Exchange(req, c.basedns)
 	if err != nil {
 		return nil, err
@@ -178,7 +177,7 @@ func (c *Client) GetAllServicesDNS() ([]*msg.Service, error) {
 	for i, r := range resp.Answer {
 		if v, ok := r.(*dns.SRV); ok {
 			s[i] = &msg.Service{
-				// TODO(miek): uehh, stuff it in Name
+				// TODO(miek): uehh, stuff it in Name?
 				Name: v.Header().Name + " (Priority: " + strconv.Itoa(int(v.Priority)) + ", " + "Weight: " + strconv.Itoa(int(v.Weight)) +")",
 				Host: v.Target,
 				Port: v.Port,
