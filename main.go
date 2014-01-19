@@ -25,7 +25,7 @@ var (
 	metricsToStdErr                    bool
 	graphiteServer, stathatUser        string
 	secret                             string
-	nameserver                         string // TODO(miek): make []string
+	nameserver                         string
 )
 
 func init() {
@@ -49,10 +49,11 @@ func main() {
 	raft.SetLogLevel(0)
 	flag.Parse()
 	nameservers := strings.Split(nameserver, ",")
-	if len(nameservers) == 0 {
+	// empty argument given
+	if len(nameservers) == 1 && nameservers[0] == "" {
 		nameservers = make([]string, 0)
 		config, err := dns.ClientConfigFromFile("/etc/resolv.conf")
-		if err != nil {
+		if err == nil {
 			for _, s := range config.Servers {
 				nameservers = append(nameservers, net.JoinHostPort(s, config.Port))
 			}
