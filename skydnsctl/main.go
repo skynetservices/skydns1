@@ -38,23 +38,51 @@ func writeService(c *cli.Context, service *msg.Service) {
 
 func newClientFromContext(c *cli.Context) (*client.Client, error) {
 	var (
-		base   = c.GlobalString("host")
-		secret = c.GlobalString("secret")
+		base      = c.GlobalString("host")
+		dnsport   = c.GlobalInt("dnsport")
+		dnsdomain = c.GlobalString("dnsdomain")
+		secret    = c.GlobalString("secret")
 	)
-	return client.NewClient(base, secret)
+	s, e := client.NewClient(base, secret, dnsdomain, dnsport)
+	if e == nil {
+		s.DNS = c.Bool("d") // currently only defined when listing services
+	}
+	return s, e
 }
 
 func loadCommands(app *cli.App) {
-	// default to getting a service
+	// default to listing a service
 	app.Action = getAction
 
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{"json", "output to json"},
-		cli.StringFlag{"host", os.Getenv("SKYDNS"), "url to SkyDNS's http endpoints (defaults to environment var SKYDNS)"},
+		cli.StringFlag{"host", os.Getenv("SKYDNS"), "url to SkyDNS's HTTP endpoints (defaults to env. var. SKYDNS)"},
+		cli.StringFlag{"dnsport",
+			func() string {
+				x := os.Getenv("SKYDNS_DNSPORT")
+				if x == "" {
+					x = "53"
+				}
+				return x
+			}(), "DNS port of SkyDNS's DNS endpoint (defaults to env. var. SKYDNS_DNSPORT or 53)"},
+		cli.StringFlag{"dnsdomain",
+			func() string {
+				x := os.Getenv("SKYDNS_DNSDOMAIN")
+				if x == "" {
+					x = "skydns.local"
+				}
+				return x
+			}(), "DNS domain of SkyDNS (defaults to env. var. SKYDNS_DNSDOMAIN or skydns.local)"},
 		cli.StringFlag{"secret", "", "secret to authenticate with"},
 	}
 
 	app.Commands = []cli.Command{
+		{
+			Name:   "list",
+			Usage:  "list a service from skydns",
+			Action: getAction,
+			Flags:  []cli.Flag{cli.BoolFlag{"d", "use DNS instead of HTTP"}},
+		},
 		{
 			Name:   "add",
 			Usage:  "add a new service to skydns",
@@ -158,7 +186,13 @@ func getAction(c *cli.Context) {
 
 		writeService(c, service)
 	} else { // or get all services
-		services, err := skydns.GetAllServices()
+		var services []*msg.Service
+		var err error
+		if skydns.DNS {
+			services, err = skydns.GetAllServicesDNS()
+		} else {
+			services, err = skydns.GetAllServices()
+		}
 		if err != nil {
 			writeError(err)
 		}

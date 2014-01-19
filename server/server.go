@@ -422,7 +422,7 @@ func (s *Server) ServeDNSForward(w dns.ResponseWriter, req *dns.Msg) {
 Redo:
 	r, _, err := c.Exchange(req, s.nameservers[nsid])
 	if err == nil {
-		//log.Printf("Forwarded DNS Request %q to %q", req.Question[0].Name, s.nameservers[nsid])
+		log.Printf("Forwarded DNS Request %q to %q", req.Question[0].Name, s.nameservers[nsid])
 		w.WriteMsg(r)
 		return
 	}

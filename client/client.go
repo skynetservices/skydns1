@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/miekg/dns"
 	"github.com/skynetservices/skydns/msg"
 	"io"
+	"net"
 	"net/http"
+	"strconv"
 )
 
 var (
@@ -19,24 +22,39 @@ var (
 
 type (
 	Client struct {
-		base   string
-		secret string
-		c      *http.Client
+		base    string
+		secret  string
+		h       *http.Client
+		basedns string
+		domain  string
+		d       *dns.Client
+		DNS     bool // if true use the DNS when listing servies
 	}
 
 	NameCount map[string]int
 )
 
-// NewClient creates a new skydns client with the specificed host address
-func NewClient(base, secret string) (*Client, error) {
+// NewClient creates a new skydns client with the specificed host address and
+// DNS port.
+func NewClient(base, secret, dnsdomain string, dnsport int) (*Client, error) {
 	if base == "" {
 		return nil, ErrNoHttpAddress
 	}
-
+	if dnsport == 0 {
+		dnsport = 53
+	}
+	host, _, err := net.SplitHostPort(base[7:])
+	if err != nil {
+		// TODO(miek): https?
+	}
+	// TODO(miek): might need to do a LookUp for the name if the server is not specified as an address.
 	return &Client{
-		base:   base,
-		secret: secret,
-		c:      &http.Client{},
+		base:    base,
+		basedns: net.JoinHostPort(host, strconv.Itoa(dnsport)),
+		domain:  dns.Fqdn(dnsdomain),
+		secret:  secret,
+		h:       &http.Client{},
+		d:       &dns.Client{},
 	}, nil
 }
 
@@ -49,7 +67,7 @@ func (c *Client) Add(uuid string, s *msg.Service) error {
 	if err != nil {
 		return err
 	}
-	resp, err := c.c.Do(req)
+	resp, err := c.h.Do(req)
 	if err != nil {
 		return err
 	}
@@ -72,7 +90,7 @@ func (c *Client) Delete(uuid string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := c.c.Do(req)
+	resp, err := c.h.Do(req)
 	if err != nil {
 		return err
 	}
@@ -87,7 +105,7 @@ func (c *Client) Get(uuid string) (*msg.Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.c.Do(req)
+	resp, err := c.h.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +134,7 @@ func (c *Client) Update(uuid string, ttl uint32) error {
 	if err != nil {
 		return err
 	}
-	resp, err := c.c.Do(req)
+	resp, err := c.h.Do(req)
 	if err != nil {
 		return err
 	}
@@ -131,7 +149,7 @@ func (c *Client) GetAllServices() ([]*msg.Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.c.Do(req)
+	resp, err := c.h.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -148,12 +166,37 @@ func (c *Client) GetAllServices() ([]*msg.Service, error) {
 	return out, nil
 }
 
+func (c *Client) GetAllServicesDNS() ([]*msg.Service, error) {
+	req, err := c.newRequestDNS("", dns.TypeSRV)
+	if err != nil {
+		return nil, err
+	}
+	resp, _, err := c.d.Exchange(req, c.basedns)
+	if err != nil {
+		return nil, err
+	}
+	// Handle UUID.skydns.local additional section stuff? TODO(miek)
+	s := make([]*msg.Service, len(resp.Answer))
+	for i, r := range resp.Answer {
+		if v, ok := r.(*dns.SRV); ok {
+			s[i] = &msg.Service{
+				// TODO(miek): uehh, stuff it in Name?
+				Name: v.Header().Name + " (Priority: " + strconv.Itoa(int(v.Priority)) + ", " + "Weight: " + strconv.Itoa(int(v.Weight)) +")",
+				Host: v.Target,
+				Port: v.Port,
+				TTL: r.Header().Ttl,
+			}
+		}
+	}
+	return s, nil
+}
+
 func (c *Client) GetRegions() (NameCount, error) {
 	req, err := c.newRequest("GET", fmt.Sprintf("%s/skydns/regions/", c.base), nil)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.c.Do(req)
+	resp, err := c.h.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +216,7 @@ func (c *Client) GetEnvironments() (NameCount, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.c.Do(req)
+	resp, err := c.h.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +240,7 @@ func (c *Client) AddCallback(uuid string, cb *msg.Callback) error {
 	if err != nil {
 		return err
 	}
-	resp, err := c.c.Do(req)
+	resp, err := c.h.Do(req)
 	if err != nil {
 		return err
 	}
@@ -225,4 +268,14 @@ func (c *Client) newRequest(method, url string, body io.Reader) (*http.Request, 
 		req.Header.Add("Authorization", c.secret)
 	}
 	return req, err
+}
+
+func (c *Client) newRequestDNS(qname string, qtype uint16) (*dns.Msg, error) {
+	m := new(dns.Msg)
+	if qname == "" {
+		m.SetQuestion(c.domain, qtype)
+	} else {
+		m.SetQuestion(qname+"."+c.domain, qtype)
+	}
+	return m, nil
 }
