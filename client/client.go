@@ -28,7 +28,7 @@ type (
 		basedns string
 		domain  string
 		d       *dns.Client
-		DNS	bool // if true use the DNS when listing servies
+		DNS     bool // if true use the DNS when listing servies
 	}
 
 	NameCount map[string]int
@@ -168,6 +168,7 @@ func (c *Client) GetAllServicesDNS() ([]*msg.Service, error) {
 	if err != nil {
 		return nil, err
 	}
+	// TODO(miek): v4 and v6, do in parallel see who's first?
 	resp, _, err := c.d.Exchange(req, c.basedns)
 	if err != nil {
 		return nil, err
@@ -175,11 +176,18 @@ func (c *Client) GetAllServicesDNS() ([]*msg.Service, error) {
 	// Handle UUID.skydns.local additional section stuff? TODO(miek)
 	s := make([]*msg.Service, len(resp.Answer))
 	for i, r := range resp.Answer {
-		s[i] = &msg.Service{Name: r.String()} // dump in Name, TODO(miek)
+		if v, ok := r.(*dns.SRV); ok {
+			s[i] = &msg.Service{
+				// TODO(miek): uehh, stuff it in Name
+				Name: v.Header().Name + " (Priority: " + strconv.Itoa(int(v.Priority)) + ", " + "Weight: " + strconv.Itoa(int(v.Weight)) +")",
+				Host: v.Target,
+				Port: v.Port,
+				TTL: r.Header().Ttl,
+			}
+		}
 	}
 	return s, nil
 }
-
 
 func (c *Client) GetRegions() (NameCount, error) {
 	req, err := c.newRequest("GET", fmt.Sprintf("%s/skydns/regions/", c.base), nil)
@@ -265,7 +273,7 @@ func (c *Client) newRequestDNS(qname string, qtype uint16) (*dns.Msg, error) {
 	if qname == "" {
 		m.SetQuestion(c.domain, qtype)
 	} else {
-		m.SetQuestion(qname + "." + c.domain, qtype)
+		m.SetQuestion(qname+"."+c.domain, qtype)
 	}
 	return m, nil
 }
