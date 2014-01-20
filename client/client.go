@@ -43,6 +43,9 @@ func NewClient(base, secret, dnsdomain string, dnsport int) (*Client, error) {
 	if dnsport == 0 {
 		dnsport = 53
 	}
+	if len(base) < 8 {
+		return nil, ErrNoHttpAddress
+	}
 	host, _, err := net.SplitHostPort(base[7:])
 	if err != nil {
 		// TODO(miek): https?
