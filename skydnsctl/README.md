@@ -1,8 +1,8 @@
 ## skydnsctl - cli tool for interacting with SkyDNS
 
 #### Commands
+* add
 * list
-* get
 * update
 * delete
 
