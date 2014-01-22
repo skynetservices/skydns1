@@ -384,7 +384,7 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		m.Extra = append(m.Extra, extra...)
 	}
 
-	if q.Qtype == dns.TypeANY || q.Qtype == dns.TypeA {
+	if q.Qtype == dns.TypeANY || q.Qtype == dns.TypeA || q.Qtype == dns.TypeAAAA {
 		records, err := s.getARecords(q)
 
 		if err != nil {
@@ -453,17 +453,20 @@ func (s *Server) getARecords(q dns.Question) (records []dns.RR, err error) {
 			if err != nil {
 				return
 			}
-			records = append(records, &dns.A{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 15}, A: net.ParseIP(h)})
+			if q.Qtype == dns.TypeA {
+				records = append(records, &dns.A{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 15}, A: net.ParseIP(h)})
+			}
 		}
 	}
 	// Leader should always be listed
 	if name == "leader."+s.domain || name == "master."+s.domain || name == s.domain {
 		h, _, err = net.SplitHostPort(s.Leader())
-
 		if err != nil {
 			return
 		}
-		records = append(records, &dns.A{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 15}, A: net.ParseIP(h)})
+		if q.Qtype == dns.TypeA {
+			records = append(records, &dns.A{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 15}, A: net.ParseIP(h)})
+		}
 		return
 	}
 
@@ -482,17 +485,13 @@ func (s *Server) getARecords(q dns.Question) (records []dns.RR, err error) {
 		switch {
 		case ip == nil:
 			continue
-		case ip.To4() != nil:
+		case ip.To4() != nil && q.Qtype == dns.TypeA:
 			records = append(records, &dns.A{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: serv.TTL}, A: ip.To4()})
-		case ip.To16() != nil:
+		case ip.To4() == nil && q.Qtype == dns.TypeAAAA:
 			records = append(records, &dns.AAAA{Hdr: dns.RR_Header{Name: q.Name, Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: serv.TTL}, AAAA: ip.To16()})
-		default:
-			panic("skydns: internal error")
 		}
 	}
-
 	return
-
 }
 
 func (s *Server) getSRVRecords(q dns.Question) (records []dns.RR, extra []dns.RR, err error) {
