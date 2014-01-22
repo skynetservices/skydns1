@@ -12,9 +12,9 @@ import (
 	"github.com/goraft/raft"
 	"github.com/gorilla/mux"
 	"github.com/miekg/dns"
-	"github.com/rcrowley/go-metrics"
 	"github.com/skynetservices/skydns/msg"
 	"github.com/skynetservices/skydns/registry"
+	"github.com/skynetservices/skydns/stats"
 	"log"
 	"math"
 	"net"
@@ -36,39 +36,12 @@ import (
    TTL cleanup thread should shutdown/start based on being elected master
 */
 
-var (
-	expiredCount       metrics.Counter
-	requestCount       metrics.Counter
-	addServiceCount    metrics.Counter
-	updateTTLCount     metrics.Counter
-	getServiceCount    metrics.Counter
-	removeServiceCount metrics.Counter
-)
-
 func init() {
 	// Register Raft Commands
 	raft.RegisterCommand(&AddServiceCommand{})
 	raft.RegisterCommand(&UpdateTTLCommand{})
 	raft.RegisterCommand(&RemoveServiceCommand{})
 	raft.RegisterCommand(&AddCallbackCommand{})
-
-	expiredCount = metrics.NewCounter()
-	metrics.Register("skydns-expired-entries", expiredCount)
-
-	requestCount = metrics.NewCounter()
-	metrics.Register("skydns-requests", requestCount)
-
-	addServiceCount = metrics.NewCounter()
-	metrics.Register("skydns-add-service-requests", addServiceCount)
-
-	updateTTLCount = metrics.NewCounter()
-	metrics.Register("skydns-update-ttl-requests", updateTTLCount)
-
-	getServiceCount = metrics.NewCounter()
-	metrics.Register("skydns-get-service-requests", getServiceCount)
-
-	removeServiceCount = metrics.NewCounter()
-	metrics.Register("skydns-remove-service-requests", removeServiceCount)
 }
 
 type Server struct {
@@ -282,7 +255,7 @@ run:
 				// probably minimal chance of this happening, this will just cause commands to fail,
 				// and new leader will take over anyway
 				for _, uuid := range expired {
-					expiredCount.Inc(1)
+					stats.ExpiredCount.Inc(1)
 					s.raftServer.Do(NewRemoveServiceCommand(uuid))
 				}
 			}
@@ -356,7 +329,7 @@ func (s *Server) joinHandler(w http.ResponseWriter, req *http.Request) {
 // ServeDNS is the handler for DNS requests, responsible for parsing DNS request, possibly forwarding
 // it to a real dns server and returning a response.
 func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
-	requestCount.Inc(1)
+	stats.RequestCount.Inc(1)
 
 	q := req.Question[0]
 	log.Printf("Received DNS Request for %q from %q", q.Name, w.RemoteAddr())
@@ -635,7 +608,7 @@ func (s *Server) authenticate(secret string) (err error) {
 
 // Handle API add service requests
 func (s *Server) addServiceHTTPHandler(w http.ResponseWriter, req *http.Request) {
-	addServiceCount.Inc(1)
+	stats.AddServiceCount.Inc(1)
 	vars := mux.Vars(req)
 
 	var uuid string
@@ -679,7 +652,7 @@ func (s *Server) addServiceHTTPHandler(w http.ResponseWriter, req *http.Request)
 
 // Handle API remove service requests
 func (s *Server) removeServiceHTTPHandler(w http.ResponseWriter, req *http.Request) {
-	removeServiceCount.Inc(1)
+	stats.RemoveServiceCount.Inc(1)
 	vars := mux.Vars(req)
 
 	var uuid string
@@ -706,7 +679,7 @@ func (s *Server) removeServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 
 // Handle API update service requests
 func (s *Server) updateServiceHTTPHandler(w http.ResponseWriter, req *http.Request) {
-	updateTTLCount.Inc(1)
+	stats.UpdateTTLCount.Inc(1)
 	vars := mux.Vars(req)
 
 	var uuid string
@@ -738,7 +711,7 @@ func (s *Server) updateServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 
 // Handle API get service requests
 func (s *Server) getServiceHTTPHandler(w http.ResponseWriter, req *http.Request) {
-	getServiceCount.Inc(1)
+	stats.GetServiceCount.Inc(1)
 	vars := mux.Vars(req)
 
 	var uuid string
