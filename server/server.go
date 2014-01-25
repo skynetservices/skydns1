@@ -384,6 +384,8 @@ func (s *Server) ServeDNSForward(w dns.ResponseWriter, req *dns.Msg) {
 		m := new(dns.Msg)
 		m.SetReply(req)
 		m.SetRcode(req, dns.RcodeServerFailure)
+		m.Authoritative = false // no matter what set to false
+		m.RecursionAvailable = true // and this is still true
 		w.WriteMsg(m)
 		return
 	}
