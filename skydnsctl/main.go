@@ -8,6 +8,7 @@ import (
 	"github.com/skynetservices/skydns/msg"
 	"os"
 	"strconv"
+	"strings"
 )
 
 func writeError(err error) {
@@ -60,7 +61,10 @@ func loadCommands(app *cli.App) {
 		cli.StringFlag{"dns",
 			func() string {
 				if x := os.Getenv("SKYDNS_DNS"); x != "" {
-					return x
+					if strings.HasPrefix(x, "http") {
+						return x
+					}
+					return "http://" + x // default to http for now
 				}
 				return "127.0.0.1:53"
 			}(), "DNS port of SkyDNS's DNS endpoint (defaults to env. var. SKYDNS_DNS)"},
