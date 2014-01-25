@@ -341,6 +341,8 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	}
 	m := new(dns.Msg)
 	m.SetReply(req)
+	m.Authoritative = true
+	m.RecursionAvailable = true
 	m.Answer = make([]dns.RR, 0, 10)
 	defer w.WriteMsg(m)
 
@@ -348,7 +350,8 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		records, extra, err := s.getSRVRecords(q)
 
 		if err != nil {
-			m.SetRcode(req, dns.RcodeServerFailure)
+			// We are authoritative for this name, but it does not exist: NXDOMAIN
+			m.SetRcode(req, dns.RcodeNameError)
 			log.Println("Error: ", err)
 			return
 		}
