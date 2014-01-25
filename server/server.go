@@ -352,6 +352,7 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		if err != nil {
 			// We are authoritative for this name, but it does not exist: NXDOMAIN
 			m.SetRcode(req, dns.RcodeNameError)
+			m.Ns = s.createSOA()
 			log.Println("Error: ", err)
 			return
 		}
@@ -364,11 +365,11 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		records, err := s.getARecords(q)
 
 		if err != nil {
-			m.SetRcode(req, dns.RcodeServerFailure)
+			m.SetRcode(req, dns.RcodeNameError)
+			m.Ns = s.createSOA()
 			log.Println("Error: ", err)
 			return
 		}
-
 		m.Answer = append(m.Answer, records...)
 	}
 }
@@ -387,12 +388,10 @@ func (s *Server) ServeDNSForward(w dns.ResponseWriter, req *dns.Msg) {
 	if _, ok := w.RemoteAddr().(*net.TCPAddr); ok {
 		network = "tcp"
 	}
-	// TODO(miek): client timeouts, slight larger because we are recursing?
+	// TODO(miek): client timeouts? Slightly larger because we are recursing?
 	c := &dns.Client{Net: network}
 
-	// TODO(miek): add another random value so the client can not influence
-	// which server we choose?
-	// use request Id for "random" nameserver selection
+	// Use request Id for "random" nameserver selection
 	nsid := int(req.Id) % len(s.nameservers)
 	try := 0
 Redo:
@@ -760,4 +759,20 @@ func (s *Server) authHTTPWrapper(handler http.HandlerFunc) http.HandlerFunc {
 		}
 	}
 	return handler
+}
+
+
+// Return a SOA record for this SkyDNS instance
+func (s *Server) createSOA() []dns.RR {
+	dom := dns.Fqdn(s.domain)
+	soa := &dns.SOA{Hdr: dns.RR_Header{Name: dom, Rrtype: dns.TypeSOA, Class: dns.ClassINET, Ttl: 3600},
+		Ns: "skydns." + dom, // what is the primary NS for skydns?
+		Mbox: "hostmaster." + dom,
+		Serial: uint32(time.Now().Unix()),
+		Refresh: 28800,
+		Retry: 7200,
+		Expire: 604800,
+		Minttl: 3600,
+	}
+	return []dns.RR{soa}
 }
