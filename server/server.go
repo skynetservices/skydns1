@@ -361,7 +361,7 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		m.Extra = append(m.Extra, extra...)
 	}
 
-	if q.Qtype == dns.TypeANY || q.Qtype == dns.TypeA || q.Qtype == dns.TypeAAAA {
+	if q.Qtype == dns.TypeA || q.Qtype == dns.TypeAAAA {
 		records, err := s.getARecords(q)
 
 		if err != nil {
