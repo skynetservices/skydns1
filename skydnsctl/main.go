@@ -8,6 +8,7 @@ import (
 	"github.com/skynetservices/skydns/msg"
 	"os"
 	"strconv"
+	"strings"
 )
 
 func writeError(err error) {
@@ -38,12 +39,12 @@ func writeService(c *cli.Context, service *msg.Service) {
 
 func newClientFromContext(c *cli.Context) (*client.Client, error) {
 	var (
-		base      = c.GlobalString("host")
-		dnsport   = c.GlobalInt("dnsport")
-		dnsdomain = c.GlobalString("dnsdomain")
-		secret    = c.GlobalString("secret")
+		base   = c.GlobalString("host")
+		dns    = c.GlobalString("dns")
+		domain = c.GlobalString("domain")
+		secret = c.GlobalString("secret")
 	)
-	s, e := client.NewClient(base, secret, dnsdomain, dnsport)
+	s, e := client.NewClient(base, secret, domain, dns)
 	if e == nil {
 		s.DNS = c.Bool("d") // currently only defined when listing services
 	}
@@ -57,22 +58,23 @@ func loadCommands(app *cli.App) {
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{"json", "output to json"},
 		cli.StringFlag{"host", os.Getenv("SKYDNS"), "url to SkyDNS's HTTP endpoints (defaults to env. var. SKYDNS)"},
-		cli.StringFlag{"dnsport",
+		cli.StringFlag{"dns",
 			func() string {
-				x := os.Getenv("SKYDNS_DNSPORT")
-				if x == "" {
-					x = "53"
+				if x := os.Getenv("SKYDNS_DNS"); x != "" {
+					if strings.HasPrefix(x, "http") {
+						return x
+					}
+					return "http://" + x // default to http for now
 				}
-				return x
-			}(), "DNS port of SkyDNS's DNS endpoint (defaults to env. var. SKYDNS_DNSPORT or 53)"},
-		cli.StringFlag{"dnsdomain",
+				return "127.0.0.1:53"
+			}(), "DNS port of SkyDNS's DNS endpoint (defaults to env. var. SKYDNS_DNS)"},
+		cli.StringFlag{"domain",
 			func() string {
-				x := os.Getenv("SKYDNS_DNSDOMAIN")
-				if x == "" {
-					x = "skydns.local"
+				if x := os.Getenv("SKYDNS_DOMAIN"); x != "" {
+					return x
 				}
-				return x
-			}(), "DNS domain of SkyDNS (defaults to env. var. SKYDNS_DNSDOMAIN or skydns.local)"},
+				return "skydns.local"
+			}(), "DNS domain of SkyDNS (defaults to env. var. SKYDNS_DOMAIN))"},
 		cli.StringFlag{"secret", "", "secret to authenticate with"},
 	}
 

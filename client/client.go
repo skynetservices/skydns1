@@ -8,13 +8,13 @@ import (
 	"github.com/miekg/dns"
 	"github.com/skynetservices/skydns/msg"
 	"io"
-	"net"
 	"net/http"
 	"strconv"
 )
 
 var (
 	ErrNoHttpAddress   = errors.New("No HTTP address specified")
+	ErrNoDnsAddress    = errors.New("No DNS address specified")
 	ErrInvalidResponse = errors.New("Invalid HTTP response")
 	ErrServiceNotFound = errors.New("Service not found")
 	ErrConflictingUUID = errors.New("Conflicting UUID")
@@ -36,25 +36,17 @@ type (
 
 // NewClient creates a new skydns client with the specificed host address and
 // DNS port.
-func NewClient(base, secret, dnsdomain string, dnsport int) (*Client, error) {
+func NewClient(base, secret, domain, basedns string) (*Client, error) {
 	if base == "" {
 		return nil, ErrNoHttpAddress
 	}
-	if dnsport == 0 {
-		dnsport = 53
+	if basedns == "" {
+		return nil, ErrNoDnsAddress
 	}
-	if len(base) < 8 {
-		return nil, ErrNoHttpAddress
-	}
-	host, _, err := net.SplitHostPort(base[7:])
-	if err != nil {
-		// TODO(miek): https?
-	}
-	// TODO(miek): might need to do a LookUp for the name if the server is not specified as an address.
 	return &Client{
 		base:    base,
-		basedns: net.JoinHostPort(host, strconv.Itoa(dnsport)),
-		domain:  dns.Fqdn(dnsdomain),
+		basedns: basedns,
+		domain:  dns.Fqdn(domain),
 		secret:  secret,
 		h:       &http.Client{},
 		d:       &dns.Client{},
@@ -184,10 +176,10 @@ func (c *Client) GetAllServicesDNS() ([]*msg.Service, error) {
 		if v, ok := r.(*dns.SRV); ok {
 			s[i] = &msg.Service{
 				// TODO(miek): uehh, stuff it in Name?
-				Name: v.Header().Name + " (Priority: " + strconv.Itoa(int(v.Priority)) + ", " + "Weight: " + strconv.Itoa(int(v.Weight)) +")",
+				Name: v.Header().Name + " (Priority: " + strconv.Itoa(int(v.Priority)) + ", " + "Weight: " + strconv.Itoa(int(v.Weight)) + ")",
 				Host: v.Target,
 				Port: v.Port,
-				TTL: r.Header().Ttl,
+				TTL:  r.Header().Ttl,
 			}
 		}
 	}

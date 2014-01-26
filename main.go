@@ -31,9 +31,30 @@ var (
 func init() {
 	flag.StringVar(&join, "join", "", "Member of SkyDNS cluster to join can be comma separated list")
 	flag.BoolVar(&discover, "discover", false, "Auto discover SkyDNS cluster. Performs an NS lookup on the -domain to find SkyDNS members")
-	flag.StringVar(&domain, "domain", "skydns.local", "Domain to anchor requests to")
-	flag.StringVar(&ldns, "dns", "127.0.0.1:53", "IP:Port to bind to for DNS")
-	flag.StringVar(&lhttp, "http", "127.0.0.1:8080", "IP:Port to bind to for HTTP")
+	flag.StringVar(&domain, "domain",
+		func() string {
+			if x := os.Getenv("SKYDNS_DOMAIN"); x != "" {
+				return x
+			}
+			return "skydns.local"
+		}(), "Domain to anchor requests to or env. var. SKYDNS_DOMAIN")
+	flag.StringVar(&ldns, "dns",
+		func() string {
+			if x := os.Getenv("SKYDNS_DNS"); x != "" {
+				return x
+			}
+			return "127.0.0.1:53"
+		}(), "IP:Port to bind to for DNS or env. var SKYDNS_DNS")
+	flag.StringVar(&lhttp, "http",
+		func() string {
+			if x := os.Getenv("SKYDNS"); x != "" {
+				// get rid of http or https
+				x1 := strings.TrimPrefix(x, "https://")
+				x1 = strings.TrimPrefix(x1, "http://")
+				return x1
+			}
+			return "127.0.0.1:8080"
+		}(), "IP:Port to bind to for HTTP or env. var. SKYDNS")
 	flag.StringVar(&dataDir, "data", "./data", "SkyDNS data directory")
 	flag.DurationVar(&rtimeout, "rtimeout", 2*time.Second, "Read timeout")
 	flag.DurationVar(&wtimeout, "wtimeout", 2*time.Second, "Write timeout")
