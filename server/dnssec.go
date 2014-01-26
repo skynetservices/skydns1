@@ -50,7 +50,6 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 	// get RRsets...?
 	sig := make([]*dns.RRSIG, 1, 2)
 	// only sign the key we have
-	println(s.Dnskey.String())
 	for _, r := range m.Answer {
 		if k, ok := r.(*dns.DNSKEY); ok {
 			sig[0] = new(dns.RRSIG)
@@ -65,7 +64,7 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 			sig[0].Hdr.Name = k.Hdr.Name
 			sig[0].Hdr.Ttl = origTTL
 			sig[0].Hdr.Class = dns.ClassINET
-			if e := sig[0].Sign(s.Dnskey, []dns.RR{k}); e != nil {
+			if e := sig[0].Sign(s.Privkey, []dns.RR{k}); e != nil {
 				log.Printf("Failed to sign: %s\n", e.Error())
 			}
 		}
