@@ -113,9 +113,11 @@ func main() {
 		k, p, e := server.ParseKeyFile(dnssec)
 		if e != nil {
 			log.Fatal(e)
+			return
 		}
 		if k.Header().Name != dns.Fqdn(domain) {
 			log.Fatal(errors.New("Owner name of DNSKEY must match SkyDNS domain"))
+			return
 		}
 		s.Dnskey = k
 		s.Privkey = p
