@@ -793,7 +793,7 @@ func (s *Server) createSOA() []dns.RR {
 	soa := &dns.SOA{Hdr: dns.RR_Header{Name: dom, Rrtype: dns.TypeSOA, Class: dns.ClassINET, Ttl: 3600},
 		Ns:      "skydns." + dom, // what is the primary NS for skydns?
 		Mbox:    "hostmaster." + dom,
-		Serial:  uint32(time.Now().Unix()),
+		Serial:  uint32(time.Now().Truncate(time.Hour).Unix()),
 		Refresh: 28800,
 		Retry:   7200,
 		Expire:  604800,
