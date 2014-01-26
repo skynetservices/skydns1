@@ -5,6 +5,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"github.com/goraft/raft"
 	"github.com/miekg/dns"
@@ -107,6 +108,18 @@ func main() {
 	}
 
 	s := server.NewServer(members, domain, ldns, lhttp, dataDir, rtimeout, wtimeout, secret, nameservers)
+
+	if dnssec != "" {
+		k, p, e := parseKeyFile(dnssec)
+		if e != nil {
+			log.Fatal(e)
+		}
+		if k.Header().Name != dns.Fqdn(domain) {
+			log.Fatal(errors.New("Owner name of DNSKEY must match SkyDNS domain"))
+		}
+		s.Dnskey = k
+		s.Privkey = p
+	}
 
 	// Set up metrics if specified on the command line
 	if metricsToStdErr {
