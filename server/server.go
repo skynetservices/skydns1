@@ -66,6 +66,9 @@ type Server struct {
 	raftServer raft.Server
 	dataDir    string
 	secret     string
+
+	Dnskey  *dns.DNSKEY
+	Privkey dns.PrivateKey
 }
 
 // Newserver returns a new Server.
@@ -114,7 +117,6 @@ func NewServer(members []string, domain string, dnsAddr string, httpAddr string,
 
 	// Raft Routes
 	s.router.HandleFunc("/raft/join", s.joinHandler).Methods("POST")
-
 	return
 }
 
@@ -384,7 +386,7 @@ func (s *Server) ServeDNSForward(w dns.ResponseWriter, req *dns.Msg) {
 		m := new(dns.Msg)
 		m.SetReply(req)
 		m.SetRcode(req, dns.RcodeServerFailure)
-		m.Authoritative = false // no matter what set to false
+		m.Authoritative = false     // no matter what set to false
 		m.RecursionAvailable = true // and this is still true
 		w.WriteMsg(m)
 		return
