@@ -146,10 +146,21 @@ func (c *sigCache) makeKey(rrs []dns.RR) string {
 	i = append(i, byte(rrs[0].Header().Rrtype >> 8))
 	i = append(i, byte(rrs[0].Header().Rrtype ))
 	for _, r := range rrs {
-		switch r.Header().Rrtype { // we only do a few type, serialize does:w
-
-
-
+		switch r.Header().Rrtype { // we only do a few type, serialize does manually
+		case dns.TypeSOA:
+			// only the serial
+		case dns.TypeSRV:
+			// all of it
+		case dns.TypeA:
+			// all rdata
+		case dns.TypeAAAA:
+			// all rdata
+		case dns.TypeDNSKEY:
+			// nothing, does not change
+		case dns.TypeNSEC:
+			// nextname
+		default:
+			// not handled
 		}
 	}
 	return string(h.Sum(i))
