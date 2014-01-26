@@ -270,7 +270,7 @@ SkyDNS support signing DNS answers (also know as DNSSEC). To use it you need to
 create a DNSSEC keypair and use that in SkyDNS. For instance if the domain for
 SkyDNS is `skydns.local`:
 
-    dnssec-keygen skydns.loca
+    dnssec-keygen skydns.local
     Generating key pair............++++++ ...................................++++++ 
     Kskydns.local.+005+49860
 
