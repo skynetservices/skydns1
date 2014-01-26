@@ -374,6 +374,11 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		}
 		m.Answer = append(m.Answer, records...)
 	}
+	if q.Qtype == dns.TypeDNSKEY {
+		if s.Dnskey != nil {
+			m.Answer = append(m.Answer, s.Dnskey)
+		}
+	}
 	if len(m.Answer) == 0 { // Send back a NODATA response
 		m.Ns = s.createSOA()
 	}
