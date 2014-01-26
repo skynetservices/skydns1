@@ -110,7 +110,7 @@ func main() {
 	s := server.NewServer(members, domain, ldns, lhttp, dataDir, rtimeout, wtimeout, secret, nameservers)
 
 	if dnssec != "" {
-		k, p, e := parseKeyFile(dnssec)
+		k, p, e := server.ParseKeyFile(dnssec)
 		if e != nil {
 			log.Fatal(e)
 		}
