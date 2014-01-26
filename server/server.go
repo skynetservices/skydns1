@@ -374,13 +374,21 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		}
 		m.Answer = append(m.Answer, records...)
 	}
-	if q.Qtype == dns.TypeDNSKEY {
+	if q.Qtype == dns.TypeDNSKEY && q.Name == dns.Fqdn(s.domain) {
+		// DNSKEY is stored at the apex of the zone, only return
+		// it when the qname is equal to our apex.
 		if s.Dnskey != nil {
 			m.Answer = append(m.Answer, s.Dnskey)
 		}
 	}
 	if len(m.Answer) == 0 { // Send back a NODATA response
 		m.Ns = s.createSOA()
+	}
+	// Check if we need to do DNSSEC and sign the reply
+	if s.Dnskey != nil {
+		if opt := req.IsEdns0(); opt != nil && opt.Do() {
+			s.sign(m, opt.UDPSize())
+		}
 	}
 }
 

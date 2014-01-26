@@ -40,7 +40,6 @@ func ParseKeyFile(file string) (*dns.DNSKEY, dns.PrivateKey, error) {
 // Sign signs a message m, it takes care of negative or nodata responses as
 // well by synthesising NSEC records. It will also cache the signatures, using
 // a hash of the signed data as a key as well as the generated NSEC records.
-func (s *Server) sign(m *dns.Msg) *dns.Msg {
-
+func (s *Server) sign(m *dns.Msg, bufsize uint16) *dns.Msg {
 	return nil
 }
