@@ -120,6 +120,7 @@ func main() {
 			return
 		}
 		s.Dnskey = k
+		s.KeyTag = k.KeyTag()
 		s.Privkey = p
 	}
 

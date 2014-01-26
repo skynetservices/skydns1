@@ -68,6 +68,7 @@ type Server struct {
 	secret     string
 
 	Dnskey  *dns.DNSKEY
+	KeyTag  uint16
 	Privkey dns.PrivateKey
 }
 
@@ -346,7 +347,15 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	m.Authoritative = true
 	m.RecursionAvailable = true
 	m.Answer = make([]dns.RR, 0, 10)
-	defer w.WriteMsg(m)
+	defer func() {
+		// Check if we need to do DNSSEC and sign the reply
+		if s.Dnskey != nil {
+			if opt := req.IsEdns0(); opt != nil && opt.Do() {
+				s.sign(m, opt.UDPSize())
+			}
+		}
+		w.WriteMsg(m)
+	}()
 
 	if q.Qtype == dns.TypeANY || q.Qtype == dns.TypeSRV {
 		records, extra, err := s.getSRVRecords(q)
@@ -374,21 +383,18 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		}
 		m.Answer = append(m.Answer, records...)
 	}
-	if q.Qtype == dns.TypeDNSKEY && q.Name == dns.Fqdn(s.domain) {
-		// DNSKEY is stored at the apex of the zone, only return
-		// it when the qname is equal to our apex.
-		if s.Dnskey != nil {
-			m.Answer = append(m.Answer, s.Dnskey)
+	if q.Name == dns.Fqdn(s.domain) {
+		switch q.Qtype {
+		case dns.TypeDNSKEY:
+			if s.Dnskey != nil {
+				m.Answer = append(m.Answer, s.Dnskey)
+			}
+		case dns.TypeSOA:
+			m.Answer = s.createSOA()
 		}
 	}
 	if len(m.Answer) == 0 { // Send back a NODATA response
 		m.Ns = s.createSOA()
-	}
-	// Check if we need to do DNSSEC and sign the reply
-	if s.Dnskey != nil {
-		if opt := req.IsEdns0(); opt != nil && opt.Do() {
-			s.sign(m, opt.UDPSize())
-		}
 	}
 }
 

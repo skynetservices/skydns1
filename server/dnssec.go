@@ -47,28 +47,61 @@ func ParseKeyFile(file string) (*dns.DNSKEY, dns.PrivateKey, error) {
 // We also fake the origin TTL in the signature, because we don't want to 
 // throw away signatures when services decide to have longer TTL.
 func (s *Server) sign(m *dns.Msg, bufsize uint16) {
-	// get RRsets...?
-	sig := make([]*dns.RRSIG, 1, 2)
-	// only sign the key we have
-	for _, r := range m.Answer {
-		if k, ok := r.(*dns.DNSKEY); ok {
-			sig[0] = new(dns.RRSIG)
-			sig[0].OrigTtl = origTTL
-			sig[0].Labels = 2
-			sig[0].Algorithm = s.Dnskey.Algorithm
-			sig[0].KeyTag = s.Dnskey.KeyTag()
-			sig[0].Inception = uint32(time.Now().Unix())
-			sig[0].Expiration = uint32(time.Now().Unix())
-			sig[0].TypeCovered = k.Hdr.Rrtype
-			sig[0].SignerName = k.Hdr.Name
-			sig[0].Hdr.Name = k.Hdr.Name
-			sig[0].Hdr.Ttl = origTTL
-			sig[0].Hdr.Class = dns.ClassINET
-			if e := sig[0].Sign(s.Privkey, []dns.RR{k}); e != nil {
-				log.Printf("Failed to sign: %s\n", e.Error())
-			}
+	now := time.Now()
+	incep := uint32(now.Add(-2 * time.Hour).Unix()) // 2 hours, be sure to catch daylight saving time and such
+	expir := uint32(now.Add(7 * 24 * time.Hour).Unix())
+
+	for _, r := range rrSets(m.Answer) {
+		sig := new(dns.RRSIG)
+		sig.Hdr.Ttl = r[0].Header().Ttl
+		sig.OrigTtl = origTTL
+		sig.Algorithm = s.Dnskey.Algorithm
+		sig.KeyTag = s.KeyTag
+		sig.Inception = incep
+		sig.Expiration = expir
+		sig.SignerName = s.Dnskey.Hdr.Name
+		if e := sig.Sign(s.Privkey, r); e != nil {
+			log.Printf("Failed to sign: %s\n", e.Error())
+		}
+		m.Answer = append(m.Answer, sig)
+	}
+	for _, r := range rrSets(m.Ns) {
+		sig := new(dns.RRSIG)
+		sig.Hdr.Ttl = origTTL
+		sig.OrigTtl = origTTL
+		sig.Algorithm = s.Dnskey.Algorithm
+		sig.KeyTag = s.KeyTag
+		sig.Inception = incep
+		sig.Expiration = expir
+		sig.SignerName = s.Dnskey.Hdr.Name
+		if e := sig.Sign(s.Privkey, r); e != nil {
+			log.Printf("Failed to sign: %s\n", e.Error())
+		}
+		m.Ns = append(m.Ns, sig)
+	}
+	// TODO(miek): Forget the additional section for now
+	return
+}
+
+type rrset struct {
+	qname string
+	qclass uint16
+	qtype uint16
+}
+
+func rrSets(rrs []dns.RR) map[rrset][]dns.RR {
+	m := make(map[rrset][]dns.RR)
+	for _, r := range rrs {
+		if s, ok := m[rrset{r.Header().Name, r.Header().Class, r.Header().Rrtype}]; ok {
+			s = append(s, r)
+		} else {
+			s := make([]dns.RR, 1, 3)
+			s[0] = r
+			m[rrset{r.Header().Name, r.Header().Class, r.Header().Rrtype}] = s
 		}
 	}
-	m.Answer = append(m.Answer, sig[0])
-	return
+	if len(m) > 0 {
+		return m
+	}
+	return nil
 }
