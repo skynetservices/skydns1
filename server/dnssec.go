@@ -80,6 +80,15 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 		m.Ns = append(m.Ns, sig)
 	}
 	// TODO(miek): Forget the additional section for now
+	if bufsize >= 512 || bufsize <= 4096 {
+		m.Truncated = m.Len() > int(bufsize)
+	}
+	o := new(dns.OPT)
+	o.Hdr.Name = "."
+	o.Hdr.Rrtype = dns.TypeOPT
+	o.SetDo()
+	o.SetUDPSize(4096)
+	m.Extra = append(m.Extra, o)
 	return
 }
 
