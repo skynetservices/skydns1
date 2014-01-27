@@ -166,18 +166,19 @@ func (c *sigCache) key(rrs []dns.RR) string {
 	i = append(i, byte(rrs[0].Header().Rrtype>>8))
 	i = append(i, byte(rrs[0].Header().Rrtype))
 	for _, r := range rrs {
-		switch r.Header().Rrtype { // we only do a few type, serialize these manually
-		case dns.TypeSOA:
+		switch t := r.(type) { // we only do a few type, serialize these manually
+		case *dns.SOA:
+			i = append(i, byte(t.Serial)) // This only does the last byte
 			// only the serial
-		case dns.TypeSRV:
+		case *dns.SRV:
 			// all of it
-		case dns.TypeA:
+		case *dns.A:
 			// all rdata
-		case dns.TypeAAAA:
+		case *dns.AAAA:
 			// all rdata
-		case dns.TypeDNSKEY:
+		case *dns.DNSKEY:
 			// nothing, does not change
-		case dns.TypeNSEC:
+		case *dns.NSEC:
 			// nextname
 		default:
 			// not handled
