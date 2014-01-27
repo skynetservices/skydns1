@@ -154,8 +154,9 @@ func (c *sigCache) search(s string) *dns.RRSIG {
 	defer c.RUnlock()
 	if s, ok := c.m[s]; ok {
 		// we want to return a copy here, because if we didn't the RRSIG 
-		// could be removed by another goroutine, before the packet containing
+		// could be removed by another goroutine before the packet containing
 		// this signature is send out.
+		log.Println("DNS Signature retrieved from cache")
 		return s // TODO(miek)
 	}
 	return nil
@@ -180,9 +181,9 @@ func (c *sigCache) key(rrs []dns.RR) string {
 		case *dns.AAAA:
 			// all rdata
 		case *dns.DNSKEY:
-			// nothing, does not change
+			// Need nothing more, the rdata stays the same during a run
 		case *dns.NSEC:
-			// nextname
+			// nextname?
 		default:
 			// not handled
 		}
