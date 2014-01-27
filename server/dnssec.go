@@ -153,7 +153,10 @@ func (c *sigCache) search(s string) *dns.RRSIG {
 	c.RLock()
 	defer c.RUnlock()
 	if s, ok := c.m[s]; ok {
-		return s
+		// we want to return a copy here, because if we didn't the RRSIG 
+		// could be removed by another goroutine, before the packet containing
+		// this signature is send out.
+		return s // TODO(miek)
 	}
 	return nil
 }
