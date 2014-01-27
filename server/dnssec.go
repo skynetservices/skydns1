@@ -46,7 +46,7 @@ func ParseKeyFile(file string) (*dns.DNSKEY, dns.PrivateKey, error) {
 // We also fake the origin TTL in the signature, because we don't want to
 // throw away signatures when services decide to have longer TTL.
 func (s *Server) sign(m *dns.Msg, bufsize uint16) {
-	now := time.Now()
+	now := time.Now().UTC()
 	incep := uint32(now.Add(-2 * time.Hour).Unix()) // 2 hours, be sure to catch daylight saving time and such
 	expir := uint32(now.Add(7 * 24 * time.Hour).Unix())
 
