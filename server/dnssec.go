@@ -53,19 +53,12 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 	for _, r := range rrSets(m.Answer) {
 		key := cache.key(r)
 		if s := cache.search(key); s != nil {
-			// check validity
-			// if the sig is delete before it is send out?
-			m.Answer = append(m.Answer, s)
-			continue
+			if s.ValidityPeriod(now.Add(-10 * time.Second)) {
+				m.Answer = append(m.Answer, s)
+				continue
+			}
 		}
-		sig := new(dns.RRSIG)
-		sig.Hdr.Ttl = r[0].Header().Ttl
-		sig.OrigTtl = origTTL
-		sig.Algorithm = s.Dnskey.Algorithm
-		sig.KeyTag = s.KeyTag
-		sig.Inception = incep
-		sig.Expiration = expir
-		sig.SignerName = s.Dnskey.Hdr.Name
+		sig := s.newSig(incep, expir)
 		if e := sig.Sign(s.Privkey, r); e != nil {
 			log.Printf("Failed to sign: %s\n", e.Error())
 			continue
@@ -74,14 +67,16 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 		m.Answer = append(m.Answer, sig)
 	}
 	for _, r := range rrSets(m.Ns) {
-		sig := new(dns.RRSIG)
-		sig.Hdr.Ttl = origTTL
-		sig.OrigTtl = origTTL
-		sig.Algorithm = s.Dnskey.Algorithm
-		sig.KeyTag = s.KeyTag
-		sig.Inception = incep
-		sig.Expiration = expir
-		sig.SignerName = s.Dnskey.Hdr.Name
+		key := cache.key(r)
+		if s := cache.search(key); s != nil {
+			if s.ValidityPeriod(now.Add(- 10 * time.Second)) {
+				m.Answer = append(m.Answer, s)
+				continue
+			}
+			m.Ns = append(m.Ns, s)
+			continue
+		}
+		sig := s.newSig(incep, expir)
 		if e := sig.Sign(s.Privkey, r); e != nil {
 			log.Printf("Failed to sign: %s\n", e.Error())
 			continue
@@ -99,6 +94,18 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 	o.SetUDPSize(4096)
 	m.Extra = append(m.Extra, o)
 	return
+}
+
+func (s *Server) newSig(incep, expir uint32) *dns.RRSIG {
+	sig := new(dns.RRSIG)
+	sig.Hdr.Ttl = origTTL
+	sig.OrigTtl = origTTL
+	sig.Algorithm = s.Dnskey.Algorithm
+	sig.KeyTag = s.KeyTag
+	sig.Inception = incep
+	sig.Expiration = expir
+	sig.SignerName = s.Dnskey.Hdr.Name
+	return sig
 }
 
 type rrset struct {
@@ -153,7 +160,7 @@ func (c *sigCache) search(s string) *dns.RRSIG {
 	c.RLock()
 	defer c.RUnlock()
 	if s, ok := c.m[s]; ok {
-		// we want to return a copy here, because if we didn't the RRSIG 
+		// we want to return a copy here, because if we didn't the RRSIG
 		// could be removed by another goroutine before the packet containing
 		// this signature is send out.
 		log.Println("DNS Signature retrieved from cache")
@@ -162,24 +169,26 @@ func (c *sigCache) search(s string) *dns.RRSIG {
 	return nil
 }
 
-// makeKey uses the name, type and rdata, which is serialized
-// and then hashed.
+// key uses the name, type and rdata, which is serialized and then hashed as the
+// key for the lookup
 func (c *sigCache) key(rrs []dns.RR) string {
 	h := sha1.New()
 	i := []byte(rrs[0].Header().Name)
-	i = append(i, byte(rrs[0].Header().Rrtype>>8))
-	i = append(i, byte(rrs[0].Header().Rrtype))
+	i = append(i, packUint16(rrs[0].Header().Rrtype)...)
 	for _, r := range rrs {
 		switch t := r.(type) { // we only do a few type, serialize these manually
 		case *dns.SOA:
-			i = append(i, byte(t.Serial)) // This only does the last byte
-			// only the serial
+			i = append(i, packUint32(t.Serial)...)
+			// we only fiddle with the serial so store that
 		case *dns.SRV:
-			// all of it
+			i = append(i, packUint16(t.Priority)...)
+			i = append(i, packUint16(t.Weight)...)
+			i = append(i, packUint16(t.Weight)...)
+			i = append(i, []byte(t.Target)...)
 		case *dns.A:
-			// all rdata
+			i = append(i, []byte(t.A)...)
 		case *dns.AAAA:
-			// all rdata
+			i = append(i, []byte(t.AAAA)...)
 		case *dns.DNSKEY:
 			// Need nothing more, the rdata stays the same during a run
 		case *dns.NSEC:
@@ -190,3 +199,6 @@ func (c *sigCache) key(rrs []dns.RR) string {
 	}
 	return string(h.Sum(i))
 }
+
+func packUint16(i uint16) []byte { return []byte{byte(i >> 8), byte(i)} }
+func packUint32(i uint32) []byte { return []byte{byte(i >> 24), byte(i >> 16), byte(i >> 8), byte(i)} }
