@@ -50,6 +50,7 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 	incep := uint32(now.Add(-2 * time.Hour).Unix()) // 2 hours, be sure to catch daylight saving time and such
 	expir := uint32(now.Add(7 * 24 * time.Hour).Unix())
 
+	// TODO(miek): repeating this two times?
 	for _, r := range rrSets(m.Answer) {
 		key := cache.key(r)
 		if s := cache.search(key); s != nil {
@@ -57,14 +58,24 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 				m.Answer = append(m.Answer, s)
 				continue
 			}
+			cache.remove(key)
 		}
-		sig := s.newSig(incep, expir)
-		if e := sig.Sign(s.Privkey, r); e != nil {
-			log.Printf("Failed to sign: %s\n", e.Error())
+		sig, err, shared := inflight.Do(key, func() (*dns.RRSIG, error) {
+			sig1 := s.newSig(incep, expir)
+			e := sig1.Sign(s.Privkey, r)
+			if e != nil {
+				log.Printf("Failed to sign: %s\n", e.Error())
+			}
+			return sig1, e
+		})
+		if err != nil {
 			continue
 		}
-		cache.insert(key, sig)
-		m.Answer = append(m.Answer, sig)
+		if !shared {
+			// is it possible to miss this, due the the c.dups > 0 in Do()? TODO(miek)
+			cache.insert(key, sig)
+		}
+		m.Answer = append(m.Answer, dns.Copy(sig).(*dns.RRSIG))
 	}
 	for _, r := range rrSets(m.Ns) {
 		key := cache.key(r)
@@ -73,15 +84,24 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 				m.Answer = append(m.Answer, s)
 				continue
 			}
-			m.Ns = append(m.Ns, s)
+			cache.remove(key)
+		}
+		sig, err, shared := inflight.Do(key, func() (*dns.RRSIG, error) {
+			sig1 := s.newSig(incep, expir)
+			e := sig1.Sign(s.Privkey, r)
+			if e != nil {
+				log.Printf("Failed to sign: %s\n", e.Error())
+			}
+			return sig1, e
+		})
+		if err != nil {
 			continue
 		}
-		sig := s.newSig(incep, expir)
-		if e := sig.Sign(s.Privkey, r); e != nil {
-			log.Printf("Failed to sign: %s\n", e.Error())
-			continue
+		if !shared {
+			// is it possible to miss this, due the the c.dups > 0 in Do()? TODO(miek)
+			cache.insert(key, sig)
 		}
-		m.Ns = append(m.Ns, sig)
+		m.Ns = append(m.Ns, dns.Copy(sig).(*dns.RRSIG))
 	}
 	// TODO(miek): Forget the additional section for now
 	if bufsize >= 512 || bufsize <= 4096 {
@@ -98,6 +118,7 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 
 func (s *Server) newSig(incep, expir uint32) *dns.RRSIG {
 	sig := new(dns.RRSIG)
+	sig.Hdr.Rrtype = dns.TypeRRSIG
 	sig.Hdr.Ttl = origTTL
 	sig.OrigTtl = origTTL
 	sig.Algorithm = s.Dnskey.Algorithm
@@ -201,12 +222,6 @@ func (c *sigCache) key(rrs []dns.RR) string {
 func packUint16(i uint16) []byte { return []byte{byte(i >> 8), byte(i)} }
 func packUint32(i uint32) []byte { return []byte{byte(i >> 24), byte(i >> 16), byte(i >> 8), byte(i)} }
 
-func sign(s *Server, incep, expir uint32, p dns.PrivateKey, r []dns.RR) (*dns.RRSIG, error) {
-	sig := s.newSig(incep, expir)
-	e := sig.Sign(p, r)
-	return sig, e
-}
-
 // Adapted from singleinflight.go from the original Go Code. Copyright 2013 The Go Authors.
 type call struct {
 	wg   sync.WaitGroup
@@ -235,5 +250,13 @@ func (g *single) Do(key string, fn func() (*dns.RRSIG, error)) (*dns.RRSIG, erro
 	c.wg.Add(1)
 	g.m[key] = c
 	g.Unlock()
+
+	c.val, c.err = fn()
+	c.wg.Done()
+
+	g.Lock()
+	delete(g.m, key)
+	g.Unlock()
+
 	return c.val, c.err, c.dups > 0
 }
