@@ -201,6 +201,12 @@ func (c *sigCache) key(rrs []dns.RR) string {
 func packUint16(i uint16) []byte { return []byte{byte(i >> 8), byte(i)} }
 func packUint32(i uint32) []byte { return []byte{byte(i >> 24), byte(i >> 16), byte(i >> 8), byte(i)} }
 
+func sign(s *Server, incep, expir uint32, p dns.PrivateKey, r []dns.RR) (*dns.RRSIG, error) {
+	sig := s.newSig(incep, expir)
+	e := sig.Sign(p, r)
+	return sig, e
+}
+
 // Adapted from singleinflight.go from the original Go Code. Copyright 2013 The Go Authors.
 type call struct {
 	wg   sync.WaitGroup
