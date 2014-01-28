@@ -81,7 +81,7 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 		key := cache.key(r)
 		if s := cache.search(key); s != nil {
 			if s.ValidityPeriod(now.Add(-10 * time.Second)) {
-				m.Answer = append(m.Answer, s)
+				m.Ns = append(m.Ns, s)
 				continue
 			}
 			cache.remove(key)
