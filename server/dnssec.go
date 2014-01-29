@@ -54,7 +54,7 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 	for _, r := range rrSets(m.Answer) {
 		key := cache.key(r)
 		if s := cache.search(key); s != nil {
-			if s.ValidityPeriod(now.Add(-10 * time.Second)) {
+			if s.ValidityPeriod(now.Add(-24 * time.Hour)) {
 				m.Answer = append(m.Answer, s)
 				continue
 			}
@@ -81,7 +81,7 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 	for _, r := range rrSets(m.Ns) {
 		key := cache.key(r)
 		if s := cache.search(key); s != nil {
-			if s.ValidityPeriod(now.Add(-10 * time.Second)) {
+			if s.ValidityPeriod(now.Add(-24 * time.Hour)) {
 				m.Ns = append(m.Ns, s)
 				continue
 			}
