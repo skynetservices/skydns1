@@ -66,6 +66,7 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 			if e != nil {
 				log.Printf("Failed to sign: %s\n", e.Error())
 			}
+			log.Printf("DNS Signature created for type %s\n", dns.TypeToString[r[0].Header().Rrtype]) 
 			return sig1, e
 		})
 		if err != nil {
@@ -92,6 +93,7 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 			if e != nil {
 				log.Printf("Failed to sign: %s\n", e.Error())
 			}
+			log.Printf("DNS Signature created for %s\n", r[0].Header().Rrtype) 
 			return sig1, e
 		})
 		if err != nil {
