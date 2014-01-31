@@ -3,6 +3,7 @@ package stats
 import (
 	"flag"
 	"github.com/rcrowley/go-metrics"
+	"github.com/rcrowley/go-metrics/influxdb"
 	"github.com/rcrowley/go-metrics/stathat"
 	"log"
 	"net"
@@ -19,12 +20,19 @@ var (
 
 	metricsToStdErr             bool
 	graphiteServer, stathatUser string
+	influxConfig                *influxdb.Config
 )
 
 func init() {
+	influxConfig = &influxdb.Config{}
+
 	flag.BoolVar(&metricsToStdErr, "metricsToStdErr", false, "Write metrics to stderr periodically")
 	flag.StringVar(&graphiteServer, "graphiteServer", "", "Graphite Server connection string e.g. 127.0.0.1:2003")
 	flag.StringVar(&stathatUser, "stathatUser", "", "StatHat account for metrics")
+	flag.StringVar(&influxConfig.Host, "influxdbHost", "", "Influxdb host address for metrics")
+	flag.StringVar(&influxConfig.Database, "influxdbDatabase", "", "Influxdb database name for metrics")
+	flag.StringVar(&influxConfig.Username, "influxdbUsername", "", "Influxdb username for metrics")
+	flag.StringVar(&influxConfig.Password, "influxdbPassword", "", "Influxdb password for metrics")
 
 	ExpiredCount = metrics.NewCounter()
 	metrics.Register("skydns-expired-entries", ExpiredCount)
@@ -60,5 +68,9 @@ func Collect() {
 
 	if len(stathatUser) > 1 {
 		go stathat.Stathat(metrics.DefaultRegistry, 10e9, stathatUser)
+	}
+
+	if influxConfig.Host != "" {
+		go influxdb.Influxdb(metrics.DefaultRegistry, 10e9, influxConfig)
 	}
 }
