@@ -8,9 +8,8 @@ import (
 	"flag"
 	"github.com/goraft/raft"
 	"github.com/miekg/dns"
-	"github.com/rcrowley/go-metrics"
-	"github.com/rcrowley/go-metrics/stathat"
 	"github.com/skynetservices/skydns/server"
+	"github.com/skynetservices/skydns/stats"
 	"log"
 	"net"
 	"os"
@@ -22,8 +21,6 @@ var (
 	join, ldns, lhttp, dataDir, domain string
 	rtimeout, wtimeout                 time.Duration
 	discover                           bool
-	metricsToStdErr                    bool
-	graphiteServer, stathatUser        string
 	secret                             string
 	nameserver                         string
 )
@@ -58,9 +55,6 @@ func init() {
 	flag.StringVar(&dataDir, "data", "./data", "SkyDNS data directory")
 	flag.DurationVar(&rtimeout, "rtimeout", 2*time.Second, "Read timeout")
 	flag.DurationVar(&wtimeout, "wtimeout", 2*time.Second, "Write timeout")
-	flag.BoolVar(&metricsToStdErr, "metricsToStdErr", false, "Write metrics to stderr periodically")
-	flag.StringVar(&graphiteServer, "graphiteServer", "", "Graphite Server connection string e.g. 127.0.0.1:2003")
-	flag.StringVar(&stathatUser, "stathatUser", "", "StatHat account for metrics")
 	flag.StringVar(&secret, "secret", "", "Shared secret for use with http api")
 	flag.StringVar(&nameserver, "nameserver", "", "Nameserver address to forward (non-local) queries to e.g. 8.8.8.8:53,8.8.4.4:53")
 }
@@ -106,21 +100,7 @@ func main() {
 
 	s := server.NewServer(members, domain, ldns, lhttp, dataDir, rtimeout, wtimeout, secret, nameservers)
 
-	// Set up metrics if specified on the command line
-	if metricsToStdErr {
-		go metrics.Log(metrics.DefaultRegistry, 60e9, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
-	}
-
-	if len(graphiteServer) > 1 {
-		addr, err := net.ResolveTCPAddr("tcp", graphiteServer)
-		if err != nil {
-			go metrics.Graphite(metrics.DefaultRegistry, 10e9, "skydns", addr)
-		}
-	}
-
-	if len(stathatUser) > 1 {
-		go stathat.Stathat(metrics.DefaultRegistry, 10e9, stathatUser)
-	}
+	stats.Collect()
 
 	waiter, err := s.Start()
 	if err != nil {

@@ -1,7 +1,12 @@
 package stats
 
 import (
+	"flag"
 	"github.com/rcrowley/go-metrics"
+	"github.com/rcrowley/go-metrics/stathat"
+	"log"
+	"net"
+	"os"
 )
 
 var (
@@ -11,9 +16,16 @@ var (
 	UpdateTTLCount     metrics.Counter
 	GetServiceCount    metrics.Counter
 	RemoveServiceCount metrics.Counter
+
+	metricsToStdErr             bool
+	graphiteServer, stathatUser string
 )
 
 func init() {
+	flag.BoolVar(&metricsToStdErr, "metricsToStdErr", false, "Write metrics to stderr periodically")
+	flag.StringVar(&graphiteServer, "graphiteServer", "", "Graphite Server connection string e.g. 127.0.0.1:2003")
+	flag.StringVar(&stathatUser, "stathatUser", "", "StatHat account for metrics")
+
 	ExpiredCount = metrics.NewCounter()
 	metrics.Register("skydns-expired-entries", ExpiredCount)
 
@@ -31,4 +43,22 @@ func init() {
 
 	RemoveServiceCount = metrics.NewCounter()
 	metrics.Register("skydns-remove-service-requests", RemoveServiceCount)
+}
+
+func Collect() {
+	// Set up metrics if specified on the command line
+	if metricsToStdErr {
+		go metrics.Log(metrics.DefaultRegistry, 60e9, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
+	}
+
+	if len(graphiteServer) > 1 {
+		addr, err := net.ResolveTCPAddr("tcp", graphiteServer)
+		if err != nil {
+			go metrics.Graphite(metrics.DefaultRegistry, 10e9, "skydns", addr)
+		}
+	}
+
+	if len(stathatUser) > 1 {
+		go stathat.Stathat(metrics.DefaultRegistry, 10e9, stathatUser)
+	}
 }
