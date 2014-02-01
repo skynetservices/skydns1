@@ -69,9 +69,9 @@ type Server struct {
 	dataDir    string
 	secret     string
 
-	Dnskey  *dns.DNSKEY
-	KeyTag  uint16
-	Privkey dns.PrivateKey
+	dnskey  *dns.DNSKEY
+	keyTag  uint16
+	privkey dns.PrivateKey
 }
 
 // Newserver returns a new Server.
@@ -352,7 +352,7 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	m.Answer = make([]dns.RR, 0, 10)
 	defer func() {
 		// Check if we need to do DNSSEC and sign the reply
-		if s.Dnskey != nil {
+		if s.dnskey != nil {
 			if opt := req.IsEdns0(); opt != nil && opt.Do() {
 				s.sign(m, opt.UDPSize())
 			}
@@ -389,8 +389,8 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	if q.Name == dns.Fqdn(s.domain) {
 		switch q.Qtype {
 		case dns.TypeDNSKEY:
-			if s.Dnskey != nil {
-				m.Answer = append(m.Answer, s.Dnskey)
+			if s.dnskey != nil {
+				m.Answer = append(m.Answer, s.dnskey)
 			}
 		case dns.TypeSOA:
 			m.Answer = s.createSOA()
@@ -675,7 +675,7 @@ func (s *Server) addServiceHTTPHandler(w http.ResponseWriter, req *http.Request)
 		}
 		return
 	}
-	if s.Dnskey != nil {
+	if s.dnskey != nil {
 		addServiceNSEC(serv)
 	}
 	w.WriteHeader(http.StatusCreated)
@@ -697,7 +697,7 @@ func (s *Server) removeServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	if s.Dnskey != nil {
+	if s.dnskey != nil {
 		serv, _ = s.registry.GetUUID(uuid)
 }
 	if _, err := s.raftServer.Do(NewRemoveServiceCommand(uuid)); err != nil {
@@ -711,7 +711,7 @@ func (s *Server) removeServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}
-	if s.Dnskey != nil {
+	if s.dnskey != nil {
 		removeServiceNSEC(serv)
 	}
 }
