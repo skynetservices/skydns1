@@ -710,6 +710,7 @@ func (s *Server) removeServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 			log.Println("Error: ", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
+		return
 	}
 	if s.Dnskey != nil {
 		removeServiceNSEC(serv)

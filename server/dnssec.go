@@ -355,7 +355,9 @@ func (d *denialList) remove(x string, l int) {
 	return
 }
 
-func removeServiceNSEC(s msg.Service) {}
+func removeServiceNSEC(s msg.Service) {
+	log.Printf("Removing NSEC for Service")
+}
 
 // search searches the denial list for name, if found we return it, and create
 // a nodata nsec response by filling the types. If not found we get back an index
