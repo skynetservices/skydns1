@@ -9,6 +9,8 @@ import (
 	"github.com/miekg/dns"
 	"log"
 	"os"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -71,7 +73,7 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 			cache.remove(key)
 		}
 		sig, err, shared := inflight.Do(key, func() (*dns.RRSIG, error) {
-			sig1 := s.newSig(incep, expir)
+			sig1 := s.newRRSIG(incep, expir)
 			e := sig1.Sign(s.Privkey, r)
 			if e != nil {
 				log.Printf("Failed to sign: %s\n", e.Error())
@@ -98,7 +100,7 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 			cache.remove(key)
 		}
 		sig, err, shared := inflight.Do(key, func() (*dns.RRSIG, error) {
-			sig1 := s.newSig(incep, expir)
+			sig1 := s.newRRSIG(incep, expir)
 			e := sig1.Sign(s.Privkey, r)
 			if e != nil {
 				log.Printf("Failed to sign: %s\n", e.Error())
@@ -128,7 +130,7 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 	return
 }
 
-func (s *Server) newSig(incep, expir uint32) *dns.RRSIG {
+func (s *Server) newRRSIG(incep, expir uint32) *dns.RRSIG {
 	sig := new(dns.RRSIG)
 	sig.Hdr.Rrtype = dns.TypeRRSIG
 	sig.Hdr.Ttl = origTTL
@@ -139,6 +141,22 @@ func (s *Server) newSig(incep, expir uint32) *dns.RRSIG {
 	sig.Expiration = expir
 	sig.SignerName = s.Dnskey.Hdr.Name
 	return sig
+}
+
+func (s *Server) newNSEC(qname string) *dns.NSEC {
+	return nil
+}
+
+func (s *Server) nsecKey(qname string) (string, int) {
+	qlabels := dns.SplitDomainName(qname)
+	if len(qlabels) < s.domainLabels {
+		// TODO(miek): can not happen...?
+	}
+	// strip the last s.domainLabels, return up to 4 before
+	// that. Four labels is the maximum qname we can handle.
+	ls := len(qlabels) - s.domainLabels
+	key := qlabels[ls-4 : ls]
+	return strings.Join(key, "."), len(key)
 }
 
 type rrset struct {
@@ -281,38 +299,75 @@ type denialref struct {
 
 type denialList struct {
 	m sync.RWMutex
-	d0 []denialref // right most label
-	d1 []denialref // label left of that
-	d2 []denialref // label left of that
-	d3 []denialref // left most label
+	// 4 lists, where list:
+	// 0 contains all four labels
+	// 1 contains three rightmost labels
+	// 2 contains two rightmost labels
+	// 3 contains rightmost label
+	list [4][]denialref
 }
 
 func newDenialList() *denialList {
 	d := new(denialList)
-	d.d0 = make([]denialref, 5, 10)
-	d.d1 = make([]denialref, 5, 10)
-	d.d2 = make([]denialref, 5, 10)
-	d.d3 = make([]denialref, 5, 10)
+	d.list[0] = make([]denialref, 5, 10) // TODO(miek): these numbers are completely random
+	d.list[1] = make([]denialref, 5, 10)
+	d.list[2] = make([]denialref, 5, 10)
+	d.list[3] = make([]denialref, 5, 10)
 	return d
 }
 
-func (d *denialList) insert(name string) {
+// insert increments the reference of a name, if the name is new it will also
+// be inserted.
+func (d *denialList) insert(x string, l int) {
 	d.m.Lock()
 	defer d.m.Unlock()
-	// search, look where to insert and update reference
+	i := sort.Search(len(d.list[l-1]), func(i int) bool { return d.list[l-1][i].name >= x })
+	if i < len(d.list[l-1]) && d.list[l-1][i].name == x {
+		d.list[l-1][i].reference++
+		return
+	}
+	d.list[l-1] = append(d.list[l-1], denialref{"", 0})
+	copy(d.list[l-1][i+1:], d.list[l-1][i:])
+
+	d.list[l-1][i].name = x
+	d.list[l-1][i].reference = 1
+
+	return
 }
 
-func (d *denialList) remove(name string) {
+// add/insert?
+func addServiceNSEC(s msg.Service) { }
+
+
+// remove decrements the reference of a name, if the reference hits zero
+// the name is removed.
+func (d *denialList) remove(x string, l int) {
 	d.m.Lock()
 	defer d.m.Unlock()
-	// search, look where to insert and update reference
-	// if not found just return
+	i := sort.Search(len(d.list[l-1]), func(i int) bool { return d.list[l-1][i].name >= x })
+	if i < len(d.list[l-1]) && d.list[l-1][i].name == x {
+		d.list[l-1][i].reference--
+		if d.list[l-1][i].reference == 0 {
+			copy(d.list[l-1][i:], d.list[l-1][i+1:])
+			d.list[l-1][len(d.list[l-1])-1] = denialref{"", 0}
+			d.list[l-1] = d.list[l-1][:len(d.list[l-1])-1]
+		}
+	}
+	return
 }
 
-func (d *denialList) search(name string) {
+func removeServiceNSEC(s msg.Service) { }
+
+// search searches the denial list for name, if found we return it, and create
+// a nodata nsec response by filling the types. If not found we get back an index
+// we return the string before and after that one.
+func (d *denialList) search(x string, l int) (string, string) {
 	d.m.RLock()
 	defer d.m.RUnlock()
-	// function used when signing, we expect the name not to be found,
-	// return two strings, the one before and the one after. If those
-	// don't exist an empty string is returned
+	i := sort.Search(len(d.list[l-1]), func(i int) bool { return d.list[l-1][i].name >= x })
+	if i < len(d.list[l-1]) && d.list[l-1][i].name == x {
+		return d.list[l-1][i].name, ""
+	}
+	// this will break
+	return d.list[l-1][i].name, d.list[l-1][i+1].name
 }

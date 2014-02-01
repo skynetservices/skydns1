@@ -45,9 +45,11 @@ func init() {
 }
 
 type Server struct {
-	members      []string // initial members to join with
-	nameservers  []string // nameservers to forward to
+	members     []string // initial members to join with
+	nameservers []string // nameservers to forward to
+
 	domain       string
+	domainLabels int
 	dnsAddr      string
 	httpAddr     string
 	readTimeout  time.Duration
@@ -77,6 +79,7 @@ func NewServer(members []string, domain string, dnsAddr string, httpAddr string,
 	s = &Server{
 		members:      members,
 		domain:       domain,
+		domainLabels: dns.CountLabel(dns.Fqdn(domain)),
 		dnsAddr:      dnsAddr,
 		httpAddr:     httpAddr,
 		readTimeout:  rt,
@@ -670,10 +673,8 @@ func (s *Server) addServiceHTTPHandler(w http.ResponseWriter, req *http.Request)
 			log.Println("Error: ", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-
 		return
 	}
-
 	w.WriteHeader(http.StatusCreated)
 }
 
@@ -691,7 +692,6 @@ func (s *Server) removeServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 	}
 
 	if _, err := s.raftServer.Do(NewRemoveServiceCommand(uuid)); err != nil {
-
 		switch err {
 		case registry.ErrNotExists:
 			http.Error(w, err.Error(), http.StatusNotFound)
