@@ -137,6 +137,8 @@ func (s *Server) Start() (*sync.WaitGroup, error) {
 
 	// Initialize and start Raft server.
 	transporter := raft.NewHTTPTransporter("/raft")
+	// TODO(miek): nsec list needs to live in registry
+	// TODO(miek): right now replying log doesn't fill nsec cache
 	s.raftServer, err = raft.NewServer(s.HTTPAddr(), s.dataDir, transporter, nil, s.registry, "")
 	if err != nil {
 		log.Fatal(err)
@@ -354,6 +356,7 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		// Check if we need to do DNSSEC and sign the reply
 		if s.Dnskey != nil {
 			if opt := req.IsEdns0(); opt != nil && opt.Do() {
+				s.nsec(m)
 				s.sign(m, opt.UDPSize())
 			}
 		}
@@ -810,7 +813,7 @@ func (s *Server) createSOA() []dns.RR {
 		Refresh: 28800,
 		Retry:   7200,
 		Expire:  604800,
-		Minttl:  3600,
+		Minttl:  60,
 	}
 	return []dns.RR{soa}
 }

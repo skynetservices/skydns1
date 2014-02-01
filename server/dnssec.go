@@ -52,6 +52,19 @@ func ParseKeyFile(file string) (*dns.DNSKEY, dns.PrivateKey, error) {
 	return k.(*dns.DNSKEY), p, nil
 }
 
+// nsec creates (if needed) NSEC records that are included in the
+// reply.
+func (s *Server) nsec(m *dns.Msg) {
+	if m.Rcode == dns.RcodeNameError {
+		m.Ns = append(m.Ns, s.newNSEC(m.Question[0].Name))
+	}
+	if m.Rcode == dns.RcodeSuccess && len(m.Ns) == 1 {
+		if _, ok := m.Ns[0].(*dns.SOA); ok {
+			m.Ns = append(m.Ns, s.newNSEC(m.Question[0].Name))
+		}
+	}
+}
+
 // sign signs a message m, it takes care of negative or nodata responses as
 // well by synthesising NSEC records. It will also cache the signatures, using
 // a hash of the signed data as a key.
@@ -142,20 +155,31 @@ func (s *Server) newRRSIG(incep, expir uint32) *dns.RRSIG {
 	return sig
 }
 
+// newNSEC returns the NSEC record need to denial qname, or
+// give back a NODATA NSEC.
 func (s *Server) newNSEC(qname string) *dns.NSEC {
-	return nil
-}
-
-func (s *Server) nsecKey(qname string) (string, int) {
 	qlabels := dns.SplitDomainName(qname)
 	if len(qlabels) < s.domainLabels {
 		// TODO(miek): can not happen...?
 	}
-	// strip the last s.domainLabels, return up to 4 before
+	// Strip the last s.domainLabels, return up to 4 before
 	// that. Four labels is the maximum qname we can handle.
 	ls := len(qlabels) - s.domainLabels
-	key := qlabels[ls-4 : ls]
-	return strings.Join(key, "."), len(key)
+	ls4 := ls - 4
+	if ls4 < 0 {
+		ls4 = 0
+	}
+	key := qlabels[ls4:ls]
+	// SOA has different types then the rest
+	prev, next := denial.search(strings.Join(key, "."), len(key))
+	nsec := &dns.NSEC{Hdr: dns.RR_Header{Name: prev + s.domain + ".", Rrtype: dns.TypeNSEC, Class: dns.ClassINET, Ttl: 60},
+		NextDomain: next + s.domain + "."}
+	if prev == "" {
+		nsec.TypeBitMap = []uint16{dns.TypeSOA, dns.TypeNS, dns.TypeRRSIG, dns.TypeDNSKEY, dns.TypeNSEC}
+	} else {
+		nsec.TypeBitMap = []uint16{dns.TypeA, dns.TypeAAAA, dns.TypeSRV, dns.TypeNSEC}
+	}
+	return nsec
 }
 
 type rrset struct {
@@ -308,10 +332,10 @@ type denialList struct {
 
 func newDenialList() *denialList {
 	d := new(denialList)
-	d.list[0] = make([]denialref, 5, 10) // TODO(miek): these numbers are completely random
-	d.list[1] = make([]denialref, 5, 10)
-	d.list[2] = make([]denialref, 5, 10)
-	d.list[3] = make([]denialref, 5, 10)
+	d.list[0] = make([]denialref, 0, 10) // TODO(miek): these numbers are completely random
+	d.list[1] = make([]denialref, 0, 10)
+	d.list[2] = make([]denialref, 0, 10)
+	d.list[3] = make([]denialref, 0, 10)
 	return d
 }
 
@@ -335,7 +359,12 @@ func (d *denialList) insert(x string, l int) {
 }
 
 func addServiceNSEC(s msg.Service) {
+	// TODO(miek): replace host and version . for -
 	log.Printf("Adding NSEC for Service")
+	denial.insert(s.Region+"."+s.Version+"."+s.Name+"."+s.Environment, 4)
+	denial.insert(s.Version+"."+s.Name+"."+s.Environment, 3)
+	denial.insert(s.Name+"."+s.Environment, 2)
+	denial.insert(s.Environment, 1)
 }
 
 // remove decrements the reference of a name, if the reference hits zero
@@ -357,6 +386,10 @@ func (d *denialList) remove(x string, l int) {
 
 func removeServiceNSEC(s msg.Service) {
 	log.Printf("Removing NSEC for Service")
+	denial.insert(s.Region+"."+s.Version+"."+s.Name+"."+s.Environment, 4)
+	denial.insert(s.Version+"."+s.Name+"."+s.Environment, 3)
+	denial.insert(s.Name+"."+s.Environment, 2)
+	denial.insert(s.Environment, 1)
 }
 
 // search searches the denial list for name, if found we return it, and create
@@ -366,9 +399,9 @@ func (d *denialList) search(x string, l int) (string, string) {
 	d.m.RLock()
 	defer d.m.RUnlock()
 	i := sort.Search(len(d.list[l-1]), func(i int) bool { return d.list[l-1][i].name >= x })
-	if i < len(d.list[l-1]) && d.list[l-1][i].name == x {
-		return d.list[l-1][i].name, ""
+	// TODO(need, not found, nil
+	if i == 1 {
+		return "", d.list[l-1][i].name
 	}
-	// this will break
-	return d.list[l-1][i].name, d.list[l-1][i+1].name
+	return d.list[l-1][i-1].name, d.list[l-1][i].name
 }
