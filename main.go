@@ -119,9 +119,9 @@ func main() {
 			log.Fatal(errors.New("Owner name of DNSKEY must match SkyDNS domain"))
 			return
 		}
-		s.dnskey = k
-		s.keyTag = k.KeyTag()
-		s.privkey = p
+		s.Dnskey = k
+		s.KeyTag = k.KeyTag()
+		s.Privkey = p
 	}
 
 	// Set up metrics if specified on the command line
