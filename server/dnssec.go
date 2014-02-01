@@ -7,6 +7,7 @@ package server
 import (
 	"crypto/sha1"
 	"github.com/miekg/dns"
+	"github.com/skynetservices/skydns/msg"
 	"log"
 	"os"
 	"sort"
@@ -78,7 +79,6 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 			if e != nil {
 				log.Printf("Failed to sign: %s\n", e.Error())
 			}
-			log.Printf("DNS Signature created for type %s\n", dns.TypeToString[r[0].Header().Rrtype])
 			return sig1, e
 		})
 		if err != nil {
@@ -105,7 +105,6 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 			if e != nil {
 				log.Printf("Failed to sign: %s\n", e.Error())
 			}
-			log.Printf("DNS Signature created for %s\n", dns.TypeToString[r[0].Header().Rrtype])
 			return sig1, e
 		})
 		if err != nil {
@@ -335,9 +334,9 @@ func (d *denialList) insert(x string, l int) {
 	return
 }
 
-// add/insert?
-func addServiceNSEC(s msg.Service) { }
-
+func addServiceNSEC(s msg.Service) {
+	log.Printf("Adding NSEC for Service")
+}
 
 // remove decrements the reference of a name, if the reference hits zero
 // the name is removed.
@@ -356,7 +355,7 @@ func (d *denialList) remove(x string, l int) {
 	return
 }
 
-func removeServiceNSEC(s msg.Service) { }
+func removeServiceNSEC(s msg.Service) {}
 
 // search searches the denial list for name, if found we return it, and create
 // a nodata nsec response by filling the types. If not found we get back an index
