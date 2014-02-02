@@ -264,9 +264,7 @@ func (c *sigCache) key(rrs []dns.RR) string {
 			// Need nothing more, the rdata stays the same during a run
 		case *dns.NSEC:
 			i = append(i, []byte(t.NextDomain)...)
-			for _, v := range t.TypeBitMap {
-				i = append(i, packUint16(v)...)
-			}
+			// bitmap does not differentiate
 		default:
 			log.Printf("DNS Signature for unhandled type %T seen", t)
 		}
