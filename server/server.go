@@ -338,7 +338,7 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	stats.RequestCount.Inc(1)
 
 	q := req.Question[0]
-	log.Printf("Received DNS Request for %q from %q", q.Name, w.RemoteAddr())
+	log.Printf("Received DNS Request for %q from %q with type %d", q.Name, w.RemoteAddr(), q.Qtype)
 
 	// If the query does not fall in our s.domain, forward it
 	if !strings.HasSuffix(q.Name, dns.Fqdn(s.domain)) {
@@ -361,24 +361,33 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		w.WriteMsg(m)
 	}()
 
+	if q.Name == dns.Fqdn(s.domain) {
+		switch q.Qtype {
+		case dns.TypeDNSKEY:
+			if s.Dnskey != nil {
+				m.Answer = append(m.Answer, s.Dnskey)
+				return
+			}
+		case dns.TypeSOA:
+			m.Answer = s.createSOA()
+			return
+		}
+	}
 	if q.Qtype == dns.TypeA || q.Qtype == dns.TypeAAAA {
 		records, err := s.getARecords(q)
 
 		if err != nil {
 			m.SetRcode(req, dns.RcodeNameError)
 			m.Ns = s.createSOA()
-			log.Println("Error: ", err)
 			return
 		}
 		m.Answer = append(m.Answer, records...)
 	}
-
 	records, extra, err := s.getSRVRecords(q)
 	if err != nil {
 		// We are authoritative for this name, but it does not exist: NXDOMAIN
 		m.SetRcode(req, dns.RcodeNameError)
 		m.Ns = s.createSOA()
-		log.Println("Error: ", err)
 		return
 	}
 	if q.Qtype == dns.TypeANY || q.Qtype == dns.TypeSRV {
@@ -386,16 +395,6 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		m.Extra = append(m.Extra, extra...)
 	} 
 
-	if q.Name == dns.Fqdn(s.domain) {
-		switch q.Qtype {
-		case dns.TypeDNSKEY:
-			if s.Dnskey != nil {
-				m.Answer = append(m.Answer, s.Dnskey)
-			}
-		case dns.TypeSOA:
-			m.Answer = s.createSOA()
-		}
-	}
 	if len(m.Answer) == 0 { // Send back a NODATA response
 		m.Ns = s.createSOA()
 	}
