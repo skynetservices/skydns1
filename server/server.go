@@ -678,9 +678,6 @@ func (s *Server) addServiceHTTPHandler(w http.ResponseWriter, req *http.Request)
 		}
 		return
 	}
-	if s.Dnskey != nil {
-		addServiceNSEC(serv)
-	}
 	w.WriteHeader(http.StatusCreated)
 }
 
@@ -692,7 +689,6 @@ func (s *Server) removeServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 	var (
 		uuid string
 		ok   bool
-		serv msg.Service
 	)
 
 	if uuid, ok = vars["uuid"]; !ok {
@@ -700,9 +696,6 @@ func (s *Server) removeServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	if s.Dnskey != nil {
-		serv, _ = s.registry.GetUUID(uuid)
-}
 	if _, err := s.raftServer.Do(NewRemoveServiceCommand(uuid)); err != nil {
 		switch err {
 		case registry.ErrNotExists:
@@ -714,9 +707,6 @@ func (s *Server) removeServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
-	}
-	if s.Dnskey != nil {
-		removeServiceNSEC(serv)
 	}
 }
 
