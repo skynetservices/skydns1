@@ -160,10 +160,10 @@ func (s *Server) newNSEC(qname string) *dns.NSEC {
 	key := qlabels[ls4:ls]
 	// SOA has different types then the rest. TODO(miek): check the types
 	prev, next := s.registry.GetNSEC(strings.Join(key, "."))
-	nsec := &dns.NSEC{Hdr: dns.RR_Header{Name: prev + "." + s.domain + ".", Rrtype: dns.TypeNSEC, Class: dns.ClassINET, Ttl: 60},
-		NextDomain: next + "." + s.domain + "."}
+	nsec := &dns.NSEC{Hdr: dns.RR_Header{Name: prev + s.domain + ".", Rrtype: dns.TypeNSEC, Class: dns.ClassINET, Ttl: 60},
+		NextDomain: next + s.domain + "."}
 	if prev == "" {
-		nsec.TypeBitMap = []uint16{dns.TypeSOA, dns.TypeNS, dns.TypeRRSIG, dns.TypeDNSKEY, dns.TypeNSEC}
+		nsec.TypeBitMap = []uint16{dns.TypeA, dns.TypeSOA, dns.TypeNS, dns.TypeAAAA, dns.TypeRRSIG, dns.TypeNSEC, dns.TypeDNSKEY}
 	} else {
 		nsec.TypeBitMap = []uint16{dns.TypeA, dns.TypeAAAA, dns.TypeSRV, dns.TypeNSEC}
 	}

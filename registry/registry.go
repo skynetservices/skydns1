@@ -190,14 +190,14 @@ func (r *DefaultRegistry) GetNSEC(key string) (string, string) {
 	i := sort.Search(len(r.nsec), func(i int) bool { return r.nsec[i].name >= key })
 	if i < len(r.nsec) && r.nsec[i].name == key {
 		if i+1 == len(r.nsec) {
-			return r.nsec[i].name, ""
+			return r.nsec[i].name + ".", ""
 		}
-		return r.nsec[i].name, r.nsec[i+1].name
+		return r.nsec[i].name, r.nsec[i+1].name + "."
 	}
 	if i == 1 {
-		return "", r.nsec[i].name
+		return "", r.nsec[i].name + "."
 	}
-	return r.nsec[i-1].name, r.nsec[i].name
+	return r.nsec[i-1].name + ".", r.nsec[i].name + "."
 }
 
 // Get retrieves a list of services from the registry that matches the given domain pattern:
