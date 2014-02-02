@@ -88,6 +88,8 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 		}
 		sig, err, shared := inflight.Do(key, func() (*dns.RRSIG, error) {
 			sig1 := s.newRRSIG(incep, expir)
+			ttl := getTTLs(r)
+			defer setTTLs(r, ttl)
 			e := sig1.Sign(s.Privkey, r)
 			if e != nil {
 				log.Printf("Failed to sign: %s\n", e.Error())
@@ -114,6 +116,8 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 		}
 		sig, err, shared := inflight.Do(key, func() (*dns.RRSIG, error) {
 			sig1 := s.newRRSIG(incep, expir)
+			ttl := getTTLs(r)
+			defer setTTLs(r, ttl)
 			e := sig1.Sign(s.Privkey, r)
 			if e != nil {
 				log.Printf("Failed to sign: %s\n", e.Error())
@@ -155,8 +159,22 @@ func (s *Server) newRRSIG(incep, expir uint32) *dns.RRSIG {
 	return sig
 }
 
+func getTTLs(rrset []dns.RR) []uint32 {
+	ttl := make([]uint32, len(rrset))
+	for i, r := range rrset {
+		ttl[i] = r.Header().Ttl
+		r.Header().Ttl = origTTL
+	}
+	return ttl
+}
+
+func setTTLs(rrset []dns.RR, ttl []uint32) {
+	for i, r := range rrset {
+		r.Header().Ttl = ttl[i]
+	}
+}
+
 // newNSEC returns the NSEC record need to denial qname, or gives back a NODATA NSEC.
-// TODO(miek): wildcard respones. Do we actually use DNS wildcards in SkyDNS?
 func (s *Server) newNSEC(qname string) *dns.NSEC {
 	qlabels := dns.SplitDomainName(qname)
 	if len(qlabels) < s.domainLabels {
@@ -183,22 +201,22 @@ func (s *Server) newNSEC(qname string) *dns.NSEC {
 
 type rrset struct {
 	qname  string
-	qclass uint16
 	qtype  uint16
 }
 
 func rrSets(rrs []dns.RR) map[rrset][]dns.RR {
 	m := make(map[rrset][]dns.RR)
 	for _, r := range rrs {
-		if s, ok := m[rrset{r.Header().Name, r.Header().Class, r.Header().Rrtype}]; ok {
+		if s, ok := m[rrset{r.Header().Name, r.Header().Rrtype}]; ok {
 			s = append(s, r)
+			m[rrset{r.Header().Name, r.Header().Rrtype}] = s
 		} else {
 			s := make([]dns.RR, 1, 3)
 			s[0] = r
-			m[rrset{r.Header().Name, r.Header().Class, r.Header().Rrtype}] = s
+			m[rrset{r.Header().Name, r.Header().Rrtype}] = s
 		}
 	}
-	if len(m) > 0 {
+	if len(m) > 0 { 
 		return m
 	}
 	return nil
