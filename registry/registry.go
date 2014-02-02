@@ -32,6 +32,7 @@ type Registry interface {
 	AddCallback(s msg.Service, c msg.Callback) error
 	Len() int
 	GetNSEC(key string) (string, string)
+	// TODO(miek): add DNSSEC on/off thingy
 }
 
 // New returns a new DefaultRegistry.
@@ -80,9 +81,8 @@ func (r *DefaultRegistry) Add(s msg.Service) error {
 	return err
 }
 
+// the registry look is already being held.
 func (r *DefaultRegistry) addNSEC(key string) {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
 	i := sort.Search(len(r.nsec), func(i int) bool { return r.nsec[i].name >= key })
 	if i < len(r.nsec) && r.nsec[i].name == key {
 		r.nsec[i].reference++
@@ -142,9 +142,8 @@ func (r *DefaultRegistry) removeService(s msg.Service) error {
 	return r.tree.remove(strings.Split(k, "."))
 }
 
+// registry lock is already being held.
 func (r *DefaultRegistry) removeNSEC(key string) {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
 	i := sort.Search(len(r.nsec), func(i int) bool { return r.nsec[i].name >= key })
 	if i < len(r.nsec) && r.nsec[i].name == key {
 		r.nsec[i].reference--
