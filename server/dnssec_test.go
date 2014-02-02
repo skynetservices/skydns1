@@ -17,13 +17,30 @@ func TestDNSSEC(t *testing.T) {
 	for _, m := range services {
 		s.registry.Add(m)
 	}
+	c := new(dns.Client)
+	for _, tc := range dnsTestCases {
+		m := new(dns.Msg)
+		m.SetQuestion(tc.Question, dns.TypeSRV)
+		m.SetEdns0(4096, true)
+		resp, _, err := c.Exchange(m, "localhost:"+StrPort)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp = resp // TODO(miek): fix test
+	}
 }
 
 type dnssecTestCase struct {
-	Question string
-	Answer   []dns.SRV
+	Question     string
+	AnswerSRV    []*dns.SRV
+	AnswerRRSIG  []*dns.RRSIG
+	AnswerDNSKEY []*dns.DNSKEY
+	NsSOA        []*dns.SOA
+	NsRRSIG      []*dns.RRSIG
 }
 
+/*
 var dnssecTestCases = []dnssecTestCase{
 	// Generic Test
 	{
@@ -105,6 +122,7 @@ var dnssecTestCases = []dnssecTestCase{
 		},
 	},
 }
+*/
 
 func newTestServerDNSSEC(leader, secret, nameserver string) *Server {
 	s := newTestServer(leader, secret, nameserver)
@@ -124,6 +142,6 @@ Exponent2: YrC8OglEXIGkV3tm2494vf9ozPL6+cBkFsPPg9dXbvVCyyuW0pGHDeplvfUqs4nZp87z8
 Coefficient: mMFr4+rDY5V24HZU3Oa5NEb55iQ56ZNa182GnNhWqX7UqWjcUUGjnkCy40BqeFAQ7lp52xKHvP5Zon56mwuQRw==
 Created: 20140126132645
 Publish: 20140126132645
-Activate: 20140126132645`),"stdin")
+Activate: 20140126132645`), "stdin")
 	return s
 }
