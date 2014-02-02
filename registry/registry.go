@@ -185,7 +185,7 @@ func (r *DefaultRegistry) GetNSEC(key string) (string, string) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	if len(r.nsec) == 0 {
-		return "", "" // @ -> @
+		return "", "" // @ -> @, empty zone
 	}
 	i := sort.Search(len(r.nsec), func(i int) bool { return r.nsec[i].name >= key })
 	if i < len(r.nsec) && r.nsec[i].name == key {
