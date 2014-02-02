@@ -88,8 +88,6 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 		}
 		sig, err, shared := inflight.Do(key, func() (*dns.RRSIG, error) {
 			sig1 := s.newRRSIG(incep, expir)
-			ttl := getTTLs(r)
-			defer setTTLs(r, ttl)
 			e := sig1.Sign(s.Privkey, r)
 			if e != nil {
 				log.Printf("Failed to sign: %s\n", e.Error())
@@ -116,8 +114,6 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 		}
 		sig, err, shared := inflight.Do(key, func() (*dns.RRSIG, error) {
 			sig1 := s.newRRSIG(incep, expir)
-			ttl := getTTLs(r)
-			defer setTTLs(r, ttl)
 			e := sig1.Sign(s.Privkey, r)
 			if e != nil {
 				log.Printf("Failed to sign: %s\n", e.Error())
@@ -157,21 +153,6 @@ func (s *Server) newRRSIG(incep, expir uint32) *dns.RRSIG {
 	sig.Expiration = expir
 	sig.SignerName = s.Dnskey.Hdr.Name
 	return sig
-}
-
-func getTTLs(rrset []dns.RR) []uint32 {
-	ttl := make([]uint32, len(rrset))
-	for i, r := range rrset {
-		ttl[i] = r.Header().Ttl
-		r.Header().Ttl = origTTL
-	}
-	return ttl
-}
-
-func setTTLs(rrset []dns.RR, ttl []uint32) {
-	for i, r := range rrset {
-		r.Header().Ttl = ttl[i]
-	}
 }
 
 // newNSEC returns the NSEC record need to denial qname, or gives back a NODATA NSEC.
