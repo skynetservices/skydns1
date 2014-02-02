@@ -279,6 +279,8 @@ extension `.key` (this holds the public key) and one with the extension `.privat
 hold the private key. The basename of this file should be given to SkyDNS's -dnssec
 option: `-dnssec=Kskydns.local.+005+49860`
 
+If you then query with `dig +dnssec` you will get signatures, keys and nsec records returned.
+
 ## License
 The MIT License (MIT)
 
