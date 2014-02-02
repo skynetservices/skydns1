@@ -166,7 +166,7 @@ func (s *Server) newNSEC(qname string) *dns.NSEC {
 	if prev == "" {
 		nsec.TypeBitMap = []uint16{dns.TypeA, dns.TypeSOA, dns.TypeNS, dns.TypeAAAA, dns.TypeRRSIG, dns.TypeNSEC, dns.TypeDNSKEY}
 	} else {
-		nsec.TypeBitMap = []uint16{dns.TypeA, dns.TypeAAAA, dns.TypeSRV, dns.TypeNSEC}
+		nsec.TypeBitMap = []uint16{dns.TypeA, dns.TypeAAAA, dns.TypeSRV, dns.TypeRRSIG, dns.TypeNSEC}
 	}
 	return nsec
 }
@@ -253,9 +253,12 @@ func (c *sigCache) key(rrs []dns.RR) string {
 		case *dns.DNSKEY:
 			// Need nothing more, the rdata stays the same during a run
 		case *dns.NSEC:
-			// nextname?
+			i = append(i, []byte(t.NextDomain)...)
+			for _, v := range t.TypeBitMap {
+				i = append(i, packUint16(v)...)
+			}
 		default:
-			// not handled
+			log.Printf("DNS Signature for unhandled type %T seen", t)
 		}
 	}
 	return string(h.Sum(i))
