@@ -799,7 +799,7 @@ func TestDNSForward(t *testing.T) {
 	// TODO(miek): DNSSEC DO query
 }
 
-func newTestServer(leader string, secret, nameserver string) *Server {
+func newTestServer(leader, secret, nameserver string) *Server {
 	members := make([]string, 0)
 
 	p, _ := ioutil.TempDir("", "skydns-test-")
