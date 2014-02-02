@@ -137,8 +137,6 @@ func (s *Server) Start() (*sync.WaitGroup, error) {
 
 	// Initialize and start Raft server.
 	transporter := raft.NewHTTPTransporter("/raft")
-	// TODO(miek): nsec list needs to live in registry
-	// TODO(miek): right now replying log doesn't fill nsec cache
 	s.raftServer, err = raft.NewServer(s.HTTPAddr(), s.dataDir, transporter, nil, s.registry, "")
 	if err != nil {
 		log.Fatal(err)
