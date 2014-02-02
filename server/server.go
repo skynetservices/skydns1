@@ -361,21 +361,6 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		w.WriteMsg(m)
 	}()
 
-	if q.Qtype == dns.TypeANY || q.Qtype == dns.TypeSRV {
-		records, extra, err := s.getSRVRecords(q)
-
-		if err != nil {
-			// We are authoritative for this name, but it does not exist: NXDOMAIN
-			m.SetRcode(req, dns.RcodeNameError)
-			m.Ns = s.createSOA()
-			log.Println("Error: ", err)
-			return
-		}
-
-		m.Answer = append(m.Answer, records...)
-		m.Extra = append(m.Extra, extra...)
-	}
-
 	if q.Qtype == dns.TypeA || q.Qtype == dns.TypeAAAA {
 		records, err := s.getARecords(q)
 
@@ -387,6 +372,20 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		}
 		m.Answer = append(m.Answer, records...)
 	}
+
+	records, extra, err := s.getSRVRecords(q)
+	if err != nil {
+		// We are authoritative for this name, but it does not exist: NXDOMAIN
+		m.SetRcode(req, dns.RcodeNameError)
+		m.Ns = s.createSOA()
+		log.Println("Error: ", err)
+		return
+	}
+	if q.Qtype == dns.TypeANY || q.Qtype == dns.TypeSRV {
+		m.Answer = append(m.Answer, records...)
+		m.Extra = append(m.Extra, extra...)
+	} 
+
 	if q.Name == dns.Fqdn(s.domain) {
 		switch q.Qtype {
 		case dns.TypeDNSKEY:

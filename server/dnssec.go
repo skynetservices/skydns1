@@ -46,7 +46,12 @@ func ParseKeyFile(file string) (*dns.DNSKEY, dns.PrivateKey, error) {
 // nsec creates (if needed) NSEC records that are included in the reply.
 func (s *Server) nsec(m *dns.Msg) {
 	if m.Rcode == dns.RcodeNameError {
+		// qname
 		m.Ns = append(m.Ns, s.newNSEC(m.Question[0].Name))
+		// wildcard
+		idx := dns.Split(m.Question[0].Name)
+		wildcard := "*." + m.Question[0].Name[idx[0]:]
+		m.Ns = append(m.Ns, s.newNSEC(wildcard))
 	}
 	if m.Rcode == dns.RcodeSuccess && len(m.Ns) == 1 {
 		if _, ok := m.Ns[0].(*dns.SOA); ok {
