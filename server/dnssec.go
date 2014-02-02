@@ -46,12 +46,17 @@ func ParseKeyFile(file string) (*dns.DNSKEY, dns.PrivateKey, error) {
 // nsec creates (if needed) NSEC records that are included in the reply.
 func (s *Server) nsec(m *dns.Msg) {
 	if m.Rcode == dns.RcodeNameError {
-		// qname
-		m.Ns = append(m.Ns, s.newNSEC(m.Question[0].Name))
-		// wildcard
+		// qname nsec
+		nsec1 := s.newNSEC(m.Question[0].Name)
+		m.Ns = append(m.Ns, nsec1)
+		// wildcard nsec
 		idx := dns.Split(m.Question[0].Name)
 		wildcard := "*." + m.Question[0].Name[idx[0]:]
-		m.Ns = append(m.Ns, s.newNSEC(wildcard))
+		nsec2 := s.newNSEC(wildcard)
+		if nsec1.Hdr.Name != nsec2.Hdr.Name || nsec1.NextDomain != nsec2.NextDomain {
+			// different NSEC, add it
+			m.Ns = append(m.Ns, nsec2)
+		}
 	}
 	if m.Rcode == dns.RcodeSuccess && len(m.Ns) == 1 {
 		if _, ok := m.Ns[0].(*dns.SOA); ok {
@@ -269,6 +274,7 @@ func (c *sigCache) key(rrs []dns.RR) string {
 	return string(h.Sum(i))
 }
 
+// TODO(miek): prolly should use the stdlib ones
 func packUint16(i uint16) []byte { return []byte{byte(i >> 8), byte(i)} }
 func packUint32(i uint32) []byte { return []byte{byte(i >> 24), byte(i >> 16), byte(i >> 8), byte(i)} }
 

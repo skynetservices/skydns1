@@ -194,9 +194,10 @@ func (r *DefaultRegistry) GetNSEC(key string) (string, string) {
 		}
 		return r.nsec[i].name, r.nsec[i+1].name + "."
 	}
-	if i == 1 {
+	if i == 0 {
 		return "", r.nsec[i].name + "."
 	}
+	// TODO(miek): do I need i + 1 == len(r.nsec) here?
 	return r.nsec[i-1].name + ".", r.nsec[i].name + "."
 }
 
