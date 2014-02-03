@@ -851,47 +851,39 @@ type dnssecTestCase struct {
 var dnssecTestCases = []dnssecTestCase{
 	// DNSKEY Test
 	{
-		Question: "skydns.local.", dns.DNSKEY, dns.ClassINET
-		Answer: []&dns.SRV{
-			{
+		Question: dns.Question{"skydns.local.", dns.TypeDNSKEY, dns.ClassINET},
+		Answer: []dns.RR{&dns.DNSKEY{
 				Hdr: dns.RR_Header{
 					Name:   "skydns.local.",
-					Ttl:    3600,
+					Ttl:    origTTL,
 					Rrtype: dns.TypeDNSKEY,
 				},
-				Priority: 10,
-				Weight:   33,
-				Target:   "server2.",
-				Port:     9001,
+				Flags:	   256,
+				Protocol:  3,
+				Algorithm: 5,
+				PublicKey: "not important",
 			},
-			{
+			&dns.RRSIG{
 				Hdr: dns.RR_Header{
-					Name:   "testservice.production.skydns.local.",
-					Ttl:    33,
-					Rrtype: dns.TypeSRV,
+					Name:   "skydns.local.",
+					Ttl:    origTTL,
+					Rrtype: dns.TypeRRSIG,
 				},
-				Priority: 10,
-				Weight:   33,
-				Target:   "server5.",
-				Port:     9004,
-			},
-			{
-				Hdr: dns.RR_Header{
-					Name:   "testservice.production.skydns.local.",
-					Ttl:    34,
-					Rrtype: dns.TypeSRV,
-				},
-				Priority: 10,
-				Weight:   33,
-				Target:   "server6.",
-				Port:     9005,
+				TypeCovered: dns.TypeDNSKEY,
+				Algorithm:   5,
+				Labels:      2,
+				OrigTtl:     origTTL,
+				Expiration:  0,
+				Inception:   0,
+				KeyTag:      51945,
+				SignerName:  "skydns.local.",
+				Signature:   "not important",
 			},
 		},
 	},
 }
 
-	/*
-	// Region Priority Test
+/*
 	{
 		Question: "region1.*.testservice.production.skydns.local.",
 		Answer: []dns.SRV{
@@ -956,9 +948,9 @@ Activate: 20140126132645`), "stdin")
 }
 
 // newMsg return a new dns.Msg set with DNSSEC and with the question from the tc.
-func newMsg(tc dnsTestCase) *dns.Msg {
+func newMsg(tc dnssecTestCase) *dns.Msg {
 	m := new(dns.Msg)
-	m.SetQuestion(tc.Question, tc.Qtype)
+	m.SetQuestion(tc.Question.Name, tc.Question.Qtype)
 	m.SetEdns0(4096, true)
 	return m	
 }
