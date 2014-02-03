@@ -130,6 +130,9 @@ func (s *Server) DNSAddr() string { return s.dnsAddr }
 // HTTPAddr returns IP:Port of HTTP Server.
 func (s *Server) HTTPAddr() string { return s.httpAddr }
 
+// DNSSEC set the DNSSEC capability of the DNS Server.
+func (s *Server) DNSSEC(b bool) bool { return s.registry.DNSSEC(b) }
+
 // Start starts a DNS server and blocks waiting to be killed.
 func (s *Server) Start() (*sync.WaitGroup, error) {
 	var err error

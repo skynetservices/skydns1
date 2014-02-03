@@ -122,6 +122,7 @@ func main() {
 		s.Dnskey = k
 		s.KeyTag = k.KeyTag()
 		s.Privkey = p
+		s.DNSSEC(true)
 	}
 
 	// Set up metrics if specified on the command line

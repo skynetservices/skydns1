@@ -31,8 +31,10 @@ type Registry interface {
 	UpdateTTL(uuid string, ttl uint32, expires time.Time) error
 	AddCallback(s msg.Service, c msg.Callback) error
 	Len() int
+	// GetNSEC return the previous and next name according to the key given.
 	GetNSEC(key string) (string, string)
-	// TODO(miek): add DNSSEC on/off thingy
+	// DNSSEC sets or resets if we support DNSSEC.
+	DNSSEC(bool) bool
 }
 
 // New returns a new DefaultRegistry.
@@ -40,7 +42,7 @@ func New() Registry {
 	return &DefaultRegistry{
 		tree:  newNode(),
 		nodes: make(map[string]*node),
-		nsec:  make([]denialReference, 0, 10), // TODO(miek): 10?
+		nsec:  make([]denialReference, 0, 10),
 	}
 }
 
@@ -51,7 +53,8 @@ type DefaultRegistry struct {
 	mutex sync.Mutex
 
 	// holds a list of sorted domain names
-	nsec []denialReference // D N S S E C
+	nsec   []denialReference // D N S S E C
+	dnssec bool              // if dnssec is disabled, some expensive data structures aren't used
 }
 
 type denialReference struct {
@@ -73,10 +76,12 @@ func (r *DefaultRegistry) Add(s msg.Service) error {
 	n, err := r.tree.add(strings.Split(k, "."), s)
 	if err == nil {
 		r.nodes[n.value.UUID] = n
-		r.addNSEC(s.Region + "." + s.Version + "." + s.Name + "." + s.Environment)
-		r.addNSEC(s.Version + "." + s.Name + "." + s.Environment)
-		r.addNSEC(s.Name + "." + s.Environment)
-		r.addNSEC(s.Environment)
+		if r.dnssec {
+			r.addNSEC(s.Region + "." + s.Version + "." + s.Name + "." + s.Environment)
+			r.addNSEC(s.Version + "." + s.Name + "." + s.Environment)
+			r.addNSEC(s.Name + "." + s.Environment)
+			r.addNSEC(s.Environment)
+		}
 	}
 	return err
 }
@@ -134,10 +139,12 @@ func (r *DefaultRegistry) removeService(s msg.Service) error {
 
 	// TODO: Validate service has correct values, and getRegistryKey returns a valid value
 	k := getRegistryKey(s)
-	r.removeNSEC(s.Region + "." + s.Version + "." + s.Name + "." + s.Environment)
-	r.removeNSEC(s.Version + "." + s.Name + "." + s.Environment)
-	r.removeNSEC(s.Name + "." + s.Environment)
-	r.removeNSEC(s.Environment)
+	if r.dnssec {
+		r.removeNSEC(s.Region + "." + s.Version + "." + s.Name + "." + s.Environment)
+		r.removeNSEC(s.Version + "." + s.Name + "." + s.Environment)
+		r.removeNSEC(s.Name + "." + s.Environment)
+		r.removeNSEC(s.Environment)
+	}
 
 	return r.tree.remove(strings.Split(k, "."))
 }
@@ -199,6 +206,12 @@ func (r *DefaultRegistry) GetNSEC(key string) (string, string) {
 	}
 	// TODO(miek): do I need i + 1 == len(r.nsec) here?
 	return r.nsec[i-1].name + ".", r.nsec[i].name + "."
+}
+
+func (r *DefaultRegistry) DNSSEC(b bool) bool {
+	b1 := r.dnssec
+	r.dnssec = b
+	return b1
 }
 
 // Get retrieves a list of services from the registry that matches the given domain pattern:
