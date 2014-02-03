@@ -245,13 +245,6 @@ func (c *sigCache) search(s string) *dns.RRSIG {
 	return nil
 }
 
-
-// get return a bunch of signatures which have their owner name set to owner name.
-// This is an expensive function, because we loop the entire map.
-func (c *sigCache) get(ownername string) []*dns.RRSIG {
-	return nil
-}
-
 // key uses the name, type and rdata, which is serialized and then hashed as the
 // key for the lookup
 func (c *sigCache) key(rrs []dns.RR) string {
