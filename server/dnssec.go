@@ -78,6 +78,9 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 
 	// TODO(miek): repeating this two times?
 	for _, r := range rrSets(m.Answer) {
+		if r[0].Header().Rrtype == dns.TypeRRSIG {
+			continue
+		}
 		key := cache.key(r)
 		if s := cache.search(key); s != nil {
 			if s.ValidityPeriod(now.Add(-24 * time.Hour)) {
@@ -104,6 +107,9 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 		m.Answer = append(m.Answer, dns.Copy(sig).(*dns.RRSIG))
 	}
 	for _, r := range rrSets(m.Ns) {
+		if r[0].Header().Rrtype == dns.TypeRRSIG {
+			continue
+		}
 		key := cache.key(r)
 		if s := cache.search(key); s != nil {
 			if s.ValidityPeriod(now.Add(-24 * time.Hour)) {
@@ -236,6 +242,13 @@ func (c *sigCache) search(s string) *dns.RRSIG {
 		log.Println("DNS Signature retrieved from cache")
 		return dns.Copy(s).(*dns.RRSIG)
 	}
+	return nil
+}
+
+
+// get return a bunch of signatures which have their owner name set to owner name.
+// This is an expensive function, because we loop the entire map.
+func (c *sigCache) get(ownername string) []*dns.RRSIG {
 	return nil
 }
 
