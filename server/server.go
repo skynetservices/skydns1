@@ -393,7 +393,7 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	if q.Qtype == dns.TypeANY || q.Qtype == dns.TypeSRV {
 		m.Answer = append(m.Answer, records...)
 		m.Extra = append(m.Extra, extra...)
-	} 
+	}
 
 	if len(m.Answer) == 0 { // Send back a NODATA response
 		m.Ns = s.createSOA()

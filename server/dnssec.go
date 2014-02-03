@@ -73,7 +73,7 @@ func (s *Server) nsec(m *dns.Msg) {
 // set the origTTL to 60.
 func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 	now := time.Now().UTC()
-	incep := uint32(now.Add(-2 * time.Hour).Unix()) // 2 hours, be sure to catch daylight saving time and such
+	incep := uint32(now.Add(-2 * time.Hour).Unix())     // 2 hours, be sure to catch daylight saving time and such
 	expir := uint32(now.Add(7 * 24 * time.Hour).Unix()) // sign for a week
 
 	// TODO(miek): repeating this two times?
@@ -181,8 +181,8 @@ func (s *Server) newNSEC(qname string) *dns.NSEC {
 }
 
 type rrset struct {
-	qname  string
-	qtype  uint16
+	qname string
+	qtype uint16
 }
 
 func rrSets(rrs []dns.RR) map[rrset][]dns.RR {
@@ -197,7 +197,7 @@ func rrSets(rrs []dns.RR) map[rrset][]dns.RR {
 			m[rrset{r.Header().Name, r.Header().Rrtype}] = s
 		}
 	}
-	if len(m) > 0 { 
+	if len(m) > 0 {
 		return m
 	}
 	return nil
