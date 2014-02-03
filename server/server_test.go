@@ -820,6 +820,54 @@ func newTestServer(leader, secret, nameserver string) *Server {
 
 // DNSSEC tests
 
+func sectionCheck(t *testing.T, resp []dns.RR, tc []dns.RR) {
+	// check the RRs in the response
+	for i, r := range resp {
+		if r.Header().Name != tc[i].Header().Name {
+			t.Errorf("Response should have a Header Name of %q, but has %q", r.Header().Name, tc[i].Header().Name)
+		}
+		if r.Header().Rrtype != tc[i].Header().Rrtype {
+			t.Errorf("Response should have a Header Type of %q, but has %q", r.Header().Rrtype, tc[i].Header().Rrtype)
+		}
+		if r.Header().Ttl != tc[i].Header().Ttl {
+			t.Errorf("Response should have a Header Ttl of %q, but has %q", r.Header().Ttl, tc[i].Header().Ttl)
+		}
+		switch rt := r.(type) {
+		case *dns.DNSKEY:
+			tt := tc[i].(*dns.DNSKEY)		
+			if rt.Flags != tt.Flags {
+				t.Errorf("DNSKEY flags should be %q, but is %q", rt.Flags, tt.Flags)
+			}
+			if rt.Protocol != tt.Protocol {
+				t.Errorf("DNSKEY protocol should be %q, but is %q", rt.Protocol, tt.Protocol)
+			}
+			if rt.Algorithm != tt.Algorithm {
+				t.Errorf("DNSKEY algorithm should be %q, but is %q", rt.Algorithm, tt.Algorithm)
+			}
+		case *dns.RRSIG:
+			tt := tc[i].(*dns.RRSIG)		
+			if rt.TypeCovered != tt.TypeCovered {
+				t.Errorf("RRSIG type-covered should be %q, but is %q", rt.TypeCovered, tt.TypeCovered)
+			}
+			if rt.Algorithm != tt.Algorithm {
+				t.Errorf("RRSIG algorithm should be %q, but is %q", rt.Algorithm, tt.Algorithm)
+			}
+			if rt.Labels != tt.Labels {
+				t.Errorf("RRSIG label should be %q, but is %q", rt.Labels, tt.Labels)
+			}
+			if rt.OrigTtl != tt.OrigTtl {
+				t.Errorf("RRSIG orig-ttl should be %q, but is %q", rt.OrigTtl, tt.OrigTtl)
+			}
+			if rt.KeyTag != tt.KeyTag {
+				t.Errorf("RRSIG key-tag should be %q, but is %q", rt.KeyTag, tt.KeyTag)
+			}
+			if rt.SignerName != tt.SignerName {
+				t.Errorf("RRSIG signer-name should be %q, but is %q", rt.SignerName, tt.SignerName)
+			}
+		}
+	}
+}
+
 func TestDNSSEC(t *testing.T) {
 	s := newTestServer("", "", "")
 	defer s.Stop()
@@ -828,17 +876,14 @@ func TestDNSSEC(t *testing.T) {
 		s.registry.Add(m)
 	}
 	c := new(dns.Client)
-	for _, tc := range dnsTestCases {
-		m := new(dns.Msg)
-		m.SetQuestion(tc.Question, dns.TypeSRV)
-		m.SetEdns0(4096, true)
+	for _, tc := range dnssecTestCases {
+		m := newMsg(tc)
 		resp, _, err := c.Exchange(m, "localhost:"+StrPort)
-
 		if err != nil {
 			t.Fatal(err)
 		}
-		resp = resp // TODO(miek): fix test
-	}
+		sectionCheck(t, resp.Answer, tc.Answer)
+		}
 }
 
 type dnssecTestCase struct {
