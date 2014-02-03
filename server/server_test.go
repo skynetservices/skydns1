@@ -834,7 +834,7 @@ func sectionCheck(t *testing.T, resp []dns.RR, tc []dns.RR) {
 		}
 		switch rt := r.(type) {
 		case *dns.DNSKEY:
-			tt := tc[i].(*dns.DNSKEY)		
+			tt := tc[i].(*dns.DNSKEY)
 			if rt.Flags != tt.Flags {
 				t.Errorf("DNSKEY flags should be %q, but is %q", rt.Flags, tt.Flags)
 			}
@@ -845,7 +845,7 @@ func sectionCheck(t *testing.T, resp []dns.RR, tc []dns.RR) {
 				t.Errorf("DNSKEY algorithm should be %q, but is %q", rt.Algorithm, tt.Algorithm)
 			}
 		case *dns.RRSIG:
-			tt := tc[i].(*dns.RRSIG)		
+			tt := tc[i].(*dns.RRSIG)
 			if rt.TypeCovered != tt.TypeCovered {
 				t.Errorf("RRSIG type-covered should be %q, but is %q", rt.TypeCovered, tt.TypeCovered)
 			}
@@ -883,7 +883,7 @@ func TestDNSSEC(t *testing.T) {
 			t.Fatal(err)
 		}
 		sectionCheck(t, resp.Answer, tc.Answer)
-		}
+	}
 }
 
 type dnssecTestCase struct {
@@ -898,16 +898,16 @@ var dnssecTestCases = []dnssecTestCase{
 	{
 		Question: dns.Question{"skydns.local.", dns.TypeDNSKEY, dns.ClassINET},
 		Answer: []dns.RR{&dns.DNSKEY{
-				Hdr: dns.RR_Header{
-					Name:   "skydns.local.",
-					Ttl:    origTTL,
-					Rrtype: dns.TypeDNSKEY,
-				},
-				Flags:	   256,
-				Protocol:  3,
-				Algorithm: 5,
-				PublicKey: "not important",
+			Hdr: dns.RR_Header{
+				Name:   "skydns.local.",
+				Ttl:    origTTL,
+				Rrtype: dns.TypeDNSKEY,
 			},
+			Flags:     256,
+			Protocol:  3,
+			Algorithm: 5,
+			PublicKey: "not important",
+		},
 			&dns.RRSIG{
 				Hdr: dns.RR_Header{
 					Name:   "skydns.local.",
@@ -997,5 +997,5 @@ func newMsg(tc dnssecTestCase) *dns.Msg {
 	m := new(dns.Msg)
 	m.SetQuestion(tc.Question.Name, tc.Question.Qtype)
 	m.SetEdns0(4096, true)
-	return m	
+	return m
 }
