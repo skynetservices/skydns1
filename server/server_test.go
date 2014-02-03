@@ -842,25 +842,22 @@ func TestDNSSEC(t *testing.T) {
 }
 
 type dnssecTestCase struct {
-	Question     string
-	AnswerSRV    []*dns.SRV
-	AnswerRRSIG  []*dns.RRSIG
-	AnswerDNSKEY []*dns.DNSKEY
-	NsSOA        []*dns.SOA
-	NsRRSIG      []*dns.RRSIG
+	Question dns.Question
+	Answer   []dns.RR
+	Ns       []dns.RR
+	Extra    []dns.RR
 }
 
-/*
 var dnssecTestCases = []dnssecTestCase{
-	// Generic Test
+	// DNSKEY Test
 	{
-		Question: "testservice.production.skydns.local.",
-		Answer: []dns.SRV{
+		Question: "skydns.local.", dns.DNSKEY, dns.ClassINET
+		Answer: []&dns.SRV{
 			{
 				Hdr: dns.RR_Header{
-					Name:   "testservice.production.skydns.local.",
-					Ttl:    30,
-					Rrtype: dns.TypeSRV,
+					Name:   "skydns.local.",
+					Ttl:    3600,
+					Rrtype: dns.TypeDNSKEY,
 				},
 				Priority: 10,
 				Weight:   33,
@@ -891,7 +888,9 @@ var dnssecTestCases = []dnssecTestCase{
 			},
 		},
 	},
+}
 
+	/*
 	// Region Priority Test
 	{
 		Question: "region1.*.testservice.production.skydns.local.",
@@ -954,4 +953,12 @@ Created: 20140126132645
 Publish: 20140126132645
 Activate: 20140126132645`), "stdin")
 	return s
+}
+
+// newMsg return a new dns.Msg set with DNSSEC and with the question from the tc.
+func newMsg(tc dnsTestCase) *dns.Msg {
+	m := new(dns.Msg)
+	m.SetQuestion(tc.Question, tc.Qtype)
+	m.SetEdns0(4096, true)
+	return m	
 }
