@@ -42,6 +42,13 @@ func ParseKeyFile(file string) (*dns.DNSKEY, dns.PrivateKey, error) {
 	return k.(*dns.DNSKEY), p, nil
 }
 
+func (s *Server) SetKeys(k *dns.DNSKEY, p dns.PrivateKey) {
+	s.dnsKey = k
+	s.keyTag = k.KeyTag()
+	s.privKey = p
+	s.registry.DNSSEC(true)
+}
+
 // nsec creates (if needed) NSEC records that are included in the reply.
 func (s *Server) nsec(m *dns.Msg) {
 	if m.Rcode == dns.RcodeNameError {
@@ -90,7 +97,7 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 		}
 		sig, err, shared := inflight.Do(key, func() (*dns.RRSIG, error) {
 			sig1 := s.newRRSIG(incep, expir)
-			e := sig1.Sign(s.Privkey, r)
+			e := sig1.Sign(s.PrivateKey(), r)
 			if e != nil {
 				log.Printf("Failed to sign: %s\n", e.Error())
 			}
@@ -119,7 +126,7 @@ func (s *Server) sign(m *dns.Msg, bufsize uint16) {
 		}
 		sig, err, shared := inflight.Do(key, func() (*dns.RRSIG, error) {
 			sig1 := s.newRRSIG(incep, expir)
-			e := sig1.Sign(s.Privkey, r)
+			e := sig1.Sign(s.PrivateKey(), r)
 			if e != nil {
 				log.Printf("Failed to sign: %s\n", e.Error())
 			}
@@ -152,11 +159,11 @@ func (s *Server) newRRSIG(incep, expir uint32) *dns.RRSIG {
 	sig.Hdr.Rrtype = dns.TypeRRSIG
 	sig.Hdr.Ttl = origTTL
 	sig.OrigTtl = origTTL
-	sig.Algorithm = s.Dnskey.Algorithm
-	sig.KeyTag = s.KeyTag
+	sig.Algorithm = s.PublicKey().Algorithm
+	sig.KeyTag = s.KeyTag()
 	sig.Inception = incep
 	sig.Expiration = expir
-	sig.SignerName = s.Dnskey.Hdr.Name
+	sig.SignerName = s.PublicKey().Hdr.Name
 	return sig
 }
 

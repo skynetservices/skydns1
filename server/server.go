@@ -69,9 +69,10 @@ type Server struct {
 	dataDir    string
 	secret     string
 
-	Dnskey  *dns.DNSKEY
-	KeyTag  uint16
-	Privkey dns.PrivateKey
+	// DNSSEC key material
+	dnsKey  *dns.DNSKEY
+	keyTag  uint16
+	privKey dns.PrivateKey
 }
 
 // Newserver returns a new Server.
@@ -130,8 +131,14 @@ func (s *Server) DNSAddr() string { return s.dnsAddr }
 // HTTPAddr returns IP:Port of HTTP Server.
 func (s *Server) HTTPAddr() string { return s.httpAddr }
 
-// DNSSEC set the DNSSEC capability of the DNS Server.
-func (s *Server) DNSSEC(b bool) bool { return s.registry.DNSSEC(b) }
+// PublicKey returns the DNSKEY record of the server.
+func (s *Server) PublicKey() *dns.DNSKEY { return s.dnsKey }
+
+// KeyTag returns the keytag of the DNSKEY record of the server.
+func (s *Server) KeyTag() uint16 { return s.keyTag }
+
+// PrivateKey returns the private key of the server.
+func (s *Server) PrivateKey() dns.PrivateKey { return s.privKey }
 
 // Start starts a DNS server and blocks waiting to be killed.
 func (s *Server) Start() (*sync.WaitGroup, error) {
@@ -355,7 +362,7 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	m.Answer = make([]dns.RR, 0, 10)
 	defer func() {
 		// Check if we need to do DNSSEC and sign the reply
-		if s.Dnskey != nil {
+		if s.PublicKey() != nil {
 			if opt := req.IsEdns0(); opt != nil && opt.Do() {
 				s.nsec(m)
 				s.sign(m, opt.UDPSize())
@@ -367,8 +374,8 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	if q.Name == dns.Fqdn(s.domain) {
 		switch q.Qtype {
 		case dns.TypeDNSKEY:
-			if s.Dnskey != nil {
-				m.Answer = append(m.Answer, s.Dnskey)
+			if s.PublicKey() != nil {
+				m.Answer = append(m.Answer, s.PublicKey())
 				return
 			}
 		case dns.TypeSOA:

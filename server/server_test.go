@@ -973,9 +973,9 @@ var dnssecTestCases = []dnssecTestCase{
 func newTestServerDNSSEC(leader, secret, nameserver string) *Server {
 	s := newTestServer(leader, secret, nameserver)
 	key, _ := dns.NewRR("skydns.local. IN DNSKEY 256 3 5 AwEAAaXfO+DOBMJsQ5H4TfiabwSpqE4cGL0Qlvh5hrQumrjr9eNSdIOjIHJJKCe56qBU5mH+iBlXP29SVf6UiiMjIrAPDVhClLeWFe0PC+XlWseAyRgiLHdQ8r95+AfkhO5aZgnCwYf9FGGSaT0+CRYN+PyDbXBTLK5FN+j5b6bb7z+d")
-	s.Dnskey = key.(*dns.DNSKEY)
-	s.KeyTag = s.Dnskey.KeyTag()
-	s.Privkey, _ = s.Dnskey.ReadPrivateKey(strings.NewReader(`
+	s.dnsKey = key.(*dns.DNSKEY)
+	s.keyTag = s.dnsKey.KeyTag()
+	s.privKey, _ = s.dnsKey.ReadPrivateKey(strings.NewReader(`
 Private-key-format: v1.3
 Algorithm: 5 (RSASHA1)
 Modulus: pd874M4EwmxDkfhN+JpvBKmoThwYvRCW+HmGtC6auOv141J0g6MgckkoJ7nqoFTmYf6IGVc/b1JV/pSKIyMisA8NWEKUt5YV7Q8L5eVax4DJGCIsd1Dyv3n4B+SE7lpmCcLBh/0UYZJpPT4JFg34/INtcFMsrkU36PlvptvvP50=
