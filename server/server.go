@@ -228,12 +228,10 @@ func (s *Server) Stop() {
 // Leader returns the current leader.
 func (s *Server) Leader() string {
 	l := s.raftServer.Leader()
-
 	if l == "" {
 		// We are a single node cluster, we are the leader
 		return s.raftServer.Name()
 	}
-
 	return l
 }
 
@@ -803,7 +801,7 @@ func (s *Server) authHTTPWrapper(handler http.HandlerFunc) http.HandlerFunc {
 func (s *Server) createSOA() []dns.RR {
 	dom := dns.Fqdn(s.domain)
 	soa := &dns.SOA{Hdr: dns.RR_Header{Name: dom, Rrtype: dns.TypeSOA, Class: dns.ClassINET, Ttl: 3600},
-		Ns:      "skydns." + dom, // what is the primary NS for skydns?
+		Ns:      "master." + dom,
 		Mbox:    "hostmaster." + dom,
 		Serial:  uint32(time.Now().Truncate(time.Hour).Unix()),
 		Refresh: 28800,
