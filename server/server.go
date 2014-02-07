@@ -751,7 +751,7 @@ func (s *Server) updateServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 	}
 }
 
-// Handle API get service requests
+// getServiceHTTPHandler handles API get service requests.
 func (s *Server) getServiceHTTPHandler(w http.ResponseWriter, req *http.Request) {
 	stats.GetServiceCount.Inc(1)
 	vars := mux.Vars(req)
@@ -784,8 +784,8 @@ func (s *Server) getServiceHTTPHandler(w http.ResponseWriter, req *http.Request)
 	}
 }
 
-// secrethttphandlerwrapper will wrap a standard handler
-// if the secret is specified for the server
+// authHTTPWrapper will wrap a standard handler
+// if the secret is specified for the server.
 func (s *Server) authHTTPWrapper(handler http.HandlerFunc) http.HandlerFunc {
 	if s.secret != "" {
 		return func(w http.ResponseWriter, req *http.Request) {
@@ -802,7 +802,7 @@ func (s *Server) authHTTPWrapper(handler http.HandlerFunc) http.HandlerFunc {
 	return handler
 }
 
-// Return a SOA record for this SkyDNS instance
+// Return a SOA record for this SkyDNS instance.
 func (s *Server) createSOA() []dns.RR {
 	dom := dns.Fqdn(s.domain)
 	soa := &dns.SOA{Hdr: dns.RR_Header{Name: dom, Rrtype: dns.TypeSOA, Class: dns.ClassINET, Ttl: 3600},
