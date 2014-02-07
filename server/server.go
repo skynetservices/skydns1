@@ -361,13 +361,30 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 
 	if q.Qtype == dns.TypeA || q.Qtype == dns.TypeAAAA {
 		records, err := s.getARecords(q)
-
 		if err != nil {
 			m.SetRcode(req, dns.RcodeNameError)
 			m.Ns = s.createSOA()
 			log.Println("Error: ", err)
 			return
 		}
+		switch l := uint16(len(records)); l {
+		case 1:
+		case 2:
+			if dns.Id()%2 == 0 {
+				records[0], records[1] = records[1], records[0]
+			}
+		default:
+			// Do a minimum of l swap, maximum of 4l swaps
+			for j := 0; j < int(l*(dns.Id()%4+1)); j++ {
+				q := dns.Id() % l
+				p := dns.Id() % l
+				if q == p {
+					p = (p + 1) % l
+				}
+				records[q], records[p] = records[p], records[q]
+			}
+		}
+
 		m.Answer = append(m.Answer, records...)
 	}
 	if len(m.Answer) == 0 { // Send back a NODATA response
@@ -382,7 +399,7 @@ func (s *Server) ServeDNSForward(w dns.ResponseWriter, req *dns.Msg) {
 		m := new(dns.Msg)
 		m.SetReply(req)
 		m.SetRcode(req, dns.RcodeServerFailure)
-		m.Authoritative = false // no matter what set to false
+		m.Authoritative = false     // no matter what set to false
 		m.RecursionAvailable = true // and this is still true
 		w.WriteMsg(m)
 		return
