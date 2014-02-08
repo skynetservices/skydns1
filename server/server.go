@@ -378,7 +378,7 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 // ServeDNSForward forwards a request to a nameservers and returns the response.
 func (s *Server) ServeDNSForward(w dns.ResponseWriter, req *dns.Msg) {
 	if len(s.nameservers) == 0 {
-		log.Printf("Error: Failure to Forward DNS Request %q", dns.ErrServ)
+		log.Printf("Error: Failure to Forward DNS Request, no servers configured %q", dns.ErrServ)
 		m := new(dns.Msg)
 		m.SetReply(req)
 		m.SetRcode(req, dns.RcodeServerFailure)
