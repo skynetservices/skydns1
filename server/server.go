@@ -382,7 +382,7 @@ func (s *Server) ServeDNSForward(w dns.ResponseWriter, req *dns.Msg) {
 		m := new(dns.Msg)
 		m.SetReply(req)
 		m.SetRcode(req, dns.RcodeServerFailure)
-		m.Authoritative = false // no matter what set to false
+		m.Authoritative = false     // no matter what set to false
 		m.RecursionAvailable = true // and this is still true
 		w.WriteMsg(m)
 		return
@@ -391,8 +391,7 @@ func (s *Server) ServeDNSForward(w dns.ResponseWriter, req *dns.Msg) {
 	if _, ok := w.RemoteAddr().(*net.TCPAddr); ok {
 		network = "tcp"
 	}
-	// TODO(miek): client timeouts? Slightly larger because we are recursing?
-	c := &dns.Client{Net: network}
+	c := &dns.Client{Net: network, ReadTimeout: 5 * time.Second}
 
 	// Use request Id for "random" nameserver selection
 	nsid := int(req.Id) % len(s.nameservers)
