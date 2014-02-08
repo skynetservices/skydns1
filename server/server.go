@@ -378,11 +378,11 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 // ServeDNSForward forwards a request to a nameservers and returns the response.
 func (s *Server) ServeDNSForward(w dns.ResponseWriter, req *dns.Msg) {
 	if len(s.nameservers) == 0 {
-		log.Printf("Error: Failure to Forward DNS Request %q", dns.ErrServ)
+		log.Printf("Error: Failure to Forward DNS Request, no servers configured %q", dns.ErrServ)
 		m := new(dns.Msg)
 		m.SetReply(req)
 		m.SetRcode(req, dns.RcodeServerFailure)
-		m.Authoritative = false // no matter what set to false
+		m.Authoritative = false     // no matter what set to false
 		m.RecursionAvailable = true // and this is still true
 		w.WriteMsg(m)
 		return
@@ -391,8 +391,7 @@ func (s *Server) ServeDNSForward(w dns.ResponseWriter, req *dns.Msg) {
 	if _, ok := w.RemoteAddr().(*net.TCPAddr); ok {
 		network = "tcp"
 	}
-	// TODO(miek): client timeouts? Slightly larger because we are recursing?
-	c := &dns.Client{Net: network}
+	c := &dns.Client{Net: network, ReadTimeout: 5 * time.Second}
 
 	// Use request Id for "random" nameserver selection
 	nsid := int(req.Id) % len(s.nameservers)
@@ -407,7 +406,7 @@ Redo:
 	// Seen an error, this can only mean, "server not reached", try again
 	// but only if we have not exausted our nameservers
 	if try < len(s.nameservers) {
-		log.Printf("Error: Failure to Forward DNS Request %q", err)
+		log.Printf("Error: Failure to Forward DNS Request %q to %q", err, s.nameservers[nsid])
 		try++
 		nsid = (nsid + 1) % len(s.nameservers)
 		goto Redo
