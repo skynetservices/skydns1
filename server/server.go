@@ -406,7 +406,7 @@ Redo:
 	// Seen an error, this can only mean, "server not reached", try again
 	// but only if we have not exausted our nameservers
 	if try < len(s.nameservers) {
-		log.Printf("Error: Failure to Forward DNS Request %q", err)
+		log.Printf("Error: Failure to Forward DNS Request %q to %q", err, s.nameservers[nsid])
 		try++
 		nsid = (nsid + 1) % len(s.nameservers)
 		goto Redo
