@@ -20,7 +20,7 @@ import (
 var (
 	join, ldns, lhttp, dataDir, domain string
 	rtimeout, wtimeout                 time.Duration
-	discover                           bool
+	discover,norr                      bool
 	secret                             string
 	nameserver                         string
 )
@@ -57,6 +57,7 @@ func init() {
 	flag.DurationVar(&wtimeout, "wtimeout", 2*time.Second, "Write timeout")
 	flag.StringVar(&secret, "secret", "", "Shared secret for use with http api")
 	flag.StringVar(&nameserver, "nameserver", "", "Nameserver address to forward (non-local) queries to e.g. 8.8.8.8:53,8.8.4.4:53")
+	flag.BoolVar(&norr, "noroundrobin", false, "Do not round robin A/AAAA replies")
 }
 
 func main() {
@@ -98,7 +99,7 @@ func main() {
 		members = strings.Split(join, ",")
 	}
 
-	s := server.NewServer(members, domain, ldns, lhttp, dataDir, rtimeout, wtimeout, secret, nameservers)
+	s := server.NewServer(members, domain, ldns, lhttp, dataDir, rtimeout, wtimeout, secret, nameservers, !norr)
 
 	stats.Collect()
 
