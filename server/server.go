@@ -73,10 +73,12 @@ type Server struct {
 	dnsKey  *dns.DNSKEY
 	keyTag  uint16
 	privKey dns.PrivateKey
+
+	roundrobin bool
 }
 
 // Newserver returns a new Server.
-func NewServer(members []string, domain string, dnsAddr string, httpAddr string, dataDir string, rt, wt time.Duration, secret string, nameservers []string) (s *Server) {
+func NewServer(members []string, domain string, dnsAddr string, httpAddr string, dataDir string, rt, wt time.Duration, secret string, nameservers []string, roundrobin bool) (s *Server) {
 	s = &Server{
 		members:      members,
 		domain:       domain,
@@ -92,6 +94,7 @@ func NewServer(members []string, domain string, dnsAddr string, httpAddr string,
 		waiter:       new(sync.WaitGroup),
 		secret:       secret,
 		nameservers:  nameservers,
+		roundrobin:   roundrobin,
 	}
 
 	if _, err := os.Stat(s.dataDir); os.IsNotExist(err) {
@@ -388,24 +391,25 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 			m.Ns = s.createSOA()
 			return
 		}
-		switch l := uint16(len(records)); l {
-		case 1:
-		case 2:
-			if dns.Id()%2 == 0 {
-				records[0], records[1] = records[1], records[0]
-			}
-		default:
-			// Do a minimum of l swap, maximum of 4l swaps
-			for j := 0; j < int(l*(dns.Id()%4+1)); j++ {
-				q := dns.Id() % l
-				p := dns.Id() % l
-				if q == p {
-					p = (p + 1) % l
+		if s.roundrobin {
+			switch l := uint16(len(records)); l {
+			case 1:
+			case 2:
+				if dns.Id()%2 == 0 {
+					records[0], records[1] = records[1], records[0]
 				}
-				records[q], records[p] = records[p], records[q]
+			default:
+				// Do a minimum of l swap, maximum of 4l swaps
+				for j := 0; j < int(l*(dns.Id()%4+1)); j++ {
+					q := dns.Id() % l
+					p := dns.Id() % l
+					if q == p {
+						p = (p + 1) % l
+					}
+					records[q], records[p] = records[p], records[q]
+				}
 			}
 		}
-
 		m.Answer = append(m.Answer, records...)
 	}
 	records, extra, err := s.getSRVRecords(q)
