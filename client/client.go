@@ -13,6 +13,7 @@ import (
 	"github.com/skynetservices/skydns/msg"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 )
 
@@ -79,6 +80,13 @@ func (c *Client) Add(uuid string, s *msg.Service) error {
 		return nil
 	case http.StatusConflict:
 		return ErrConflictingUUID
+	case http.StatusMovedPermanently:
+		base, err := c.extractBaseFromLocation(resp.Header.Get("Location"))
+		if err != nil {
+			return err
+		}
+		c.base = base
+		return c.Add(uuid, s)
 	default:
 		return ErrInvalidResponse
 	}
@@ -277,4 +285,13 @@ func (c *Client) newRequestDNS(qname string, qtype uint16) (*dns.Msg, error) {
 		m.SetQuestion(qname+"."+c.domain, qtype)
 	}
 	return m, nil
+}
+
+func (c *Client) extractBaseFromLocation(location string) (string, error) {
+	u, err := url.ParseRequestURI(location) 
+	if err != nil {
+		return "", err
+	}
+	base := u.Scheme + "://" + u.Host
+	return base, nil
 }
