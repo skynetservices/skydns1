@@ -813,7 +813,7 @@ func newTestServer(leader, secret, nameserver string) *Server {
 
 	Port += 10
 	StrPort = strconv.Itoa(Port)
-	server := NewServer(members, "skydns.local", net.JoinHostPort("127.0.0.1", StrPort), net.JoinHostPort("127.0.0.1", strconv.Itoa(Port+1)), p, 1*time.Second, 1*time.Second, secret, []string{nameserver})
+	server := NewServer(members, "skydns.local", net.JoinHostPort("127.0.0.1", StrPort), net.JoinHostPort("127.0.0.1", strconv.Itoa(Port+1)), p, 1*time.Second, 1*time.Second, secret, []string{nameserver}, false)
 	server.Start()
 	return server
 }
