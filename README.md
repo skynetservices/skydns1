@@ -284,7 +284,7 @@ If you then query with `dig +dnssec` you will get signatures, keys and nsec reco
 ## License
 The MIT License (MIT)
 
-Copyright © 2013 Erik St. Martin, Brian Ketelsen
+Copyright © 2014 The SkyDNS Authors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
