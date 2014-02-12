@@ -10,6 +10,7 @@ import (
 	"github.com/miekg/dns"
 	"github.com/skynetservices/skydns/msg"
 	"log"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -30,6 +31,10 @@ type Registry interface {
 	UpdateTTL(uuid string, ttl uint32, expires time.Time) error
 	AddCallback(s msg.Service, c msg.Callback) error
 	Len() int
+	// GetNSEC return the previous and next name according to the key given.
+	GetNSEC(key string) (string, string)
+	// DNSSEC sets or resets if we support DNSSEC.
+	DNSSEC(bool) bool
 }
 
 // New returns a new DefaultRegistry.
@@ -37,6 +42,7 @@ func New() Registry {
 	return &DefaultRegistry{
 		tree:  newNode(),
 		nodes: make(map[string]*node),
+		nsec:  make([]denialReference, 0, 10),
 	}
 }
 
@@ -45,6 +51,15 @@ type DefaultRegistry struct {
 	tree  *node
 	nodes map[string]*node
 	mutex sync.Mutex
+
+	// holds a list of sorted domain names
+	nsec   []denialReference // D N S S E C
+	dnssec bool              // if dnssec is disabled, some expensive data structures aren't used
+}
+
+type denialReference struct {
+	name      string // domain name
+	reference int    // reference count
 }
 
 // Add adds a service to registry.
@@ -61,11 +76,31 @@ func (r *DefaultRegistry) Add(s msg.Service) error {
 	n, err := r.tree.add(strings.Split(k, "."), s)
 	if err == nil {
 		r.nodes[n.value.UUID] = n
+		if r.dnssec {
+			r.addNSEC(s.Region + "." + s.Version + "." + s.Name + "." + s.Environment)
+			r.addNSEC(s.Version + "." + s.Name + "." + s.Environment)
+			r.addNSEC(s.Name + "." + s.Environment)
+			r.addNSEC(s.Environment)
+		}
 	}
 	return err
 }
 
-// RemoveUUID removes a sErvice specified by an UUID.
+// the registry look is already being held.
+func (r *DefaultRegistry) addNSEC(key string) {
+	i := sort.Search(len(r.nsec), func(i int) bool { return r.nsec[i].name >= key })
+	if i < len(r.nsec) && r.nsec[i].name == key {
+		r.nsec[i].reference++
+		return
+	}
+	r.nsec = append(r.nsec, denialReference{"", 0})
+	copy(r.nsec[i+1:], r.nsec[i:])
+
+	r.nsec[i].name = key
+	r.nsec[i].reference = 1
+}
+
+// RemoveUUID removes a Service specified by an UUID.
 func (r *DefaultRegistry) RemoveUUID(uuid string) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -104,8 +139,27 @@ func (r *DefaultRegistry) removeService(s msg.Service) error {
 
 	// TODO: Validate service has correct values, and getRegistryKey returns a valid value
 	k := getRegistryKey(s)
+	if r.dnssec {
+		r.removeNSEC(s.Region + "." + s.Version + "." + s.Name + "." + s.Environment)
+		r.removeNSEC(s.Version + "." + s.Name + "." + s.Environment)
+		r.removeNSEC(s.Name + "." + s.Environment)
+		r.removeNSEC(s.Environment)
+	}
 
 	return r.tree.remove(strings.Split(k, "."))
+}
+
+// registry lock is already being held.
+func (r *DefaultRegistry) removeNSEC(key string) {
+	i := sort.Search(len(r.nsec), func(i int) bool { return r.nsec[i].name >= key })
+	if i < len(r.nsec) && r.nsec[i].name == key {
+		r.nsec[i].reference--
+		if r.nsec[i].reference == 0 {
+			copy(r.nsec[i:], r.nsec[i+1:])
+			r.nsec[len(r.nsec)-1] = denialReference{"", 0}
+			r.nsec = r.nsec[:len(r.nsec)-1]
+		}
+	}
 }
 
 // Remove removes a service from registry.
@@ -131,8 +185,33 @@ func (r *DefaultRegistry) GetUUID(uuid string) (s msg.Service, err error) {
 			return s.value, nil
 		}
 	}
-
 	return s, ErrNotExists
+}
+
+func (r *DefaultRegistry) GetNSEC(key string) (string, string) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	if len(r.nsec) == 0 {
+		return "", "" // @ -> @, empty zone
+	}
+	i := sort.Search(len(r.nsec), func(i int) bool { return r.nsec[i].name >= key })
+	if i < len(r.nsec) && r.nsec[i].name == key {
+		if i+1 == len(r.nsec) {
+			return r.nsec[i].name + ".", ""
+		}
+		return r.nsec[i].name, r.nsec[i+1].name + "."
+	}
+	if i == 0 {
+		return "", r.nsec[i].name + "."
+	}
+	// TODO(miek): do I need i + 1 == len(r.nsec) here?
+	return r.nsec[i-1].name + ".", r.nsec[i].name + "."
+}
+
+func (r *DefaultRegistry) DNSSEC(b bool) bool {
+	b1 := r.dnssec
+	r.dnssec = b
+	return b1
 }
 
 // Get retrieves a list of services from the registry that matches the given domain pattern:

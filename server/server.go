@@ -45,9 +45,11 @@ func init() {
 }
 
 type Server struct {
-	members      []string // initial members to join with
-	nameservers  []string // nameservers to forward to
+	members     []string // initial members to join with
+	nameservers []string // nameservers to forward to
+
 	domain       string
+	domainLabels int
 	dnsAddr      string
 	httpAddr     string
 	readTimeout  time.Duration
@@ -66,6 +68,11 @@ type Server struct {
 	raftServer raft.Server
 	dataDir    string
 	secret     string
+
+	// DNSSEC key material
+	dnsKey  *dns.DNSKEY
+	keyTag  uint16
+	privKey dns.PrivateKey
 }
 
 // Newserver returns a new Server.
@@ -73,6 +80,7 @@ func NewServer(members []string, domain string, dnsAddr string, httpAddr string,
 	s = &Server{
 		members:      members,
 		domain:       domain,
+		domainLabels: dns.CountLabel(dns.Fqdn(domain)),
 		dnsAddr:      dnsAddr,
 		httpAddr:     httpAddr,
 		readTimeout:  rt,
@@ -114,7 +122,6 @@ func NewServer(members []string, domain string, dnsAddr string, httpAddr string,
 
 	// Raft Routes
 	s.router.HandleFunc("/raft/join", s.joinHandler).Methods("POST")
-
 	return
 }
 
@@ -123,6 +130,15 @@ func (s *Server) DNSAddr() string { return s.dnsAddr }
 
 // HTTPAddr returns IP:Port of HTTP Server.
 func (s *Server) HTTPAddr() string { return s.httpAddr }
+
+// PublicKey returns the DNSKEY record of the server.
+func (s *Server) PublicKey() *dns.DNSKEY { return s.dnsKey }
+
+// KeyTag returns the keytag of the DNSKEY record of the server.
+func (s *Server) KeyTag() uint16 { return s.keyTag }
+
+// PrivateKey returns the private key of the server.
+func (s *Server) PrivateKey() dns.PrivateKey { return s.privKey }
 
 // Start starts a DNS server and blocks waiting to be killed.
 func (s *Server) Start() (*sync.WaitGroup, error) {
@@ -330,7 +346,7 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	stats.RequestCount.Inc(1)
 
 	q := req.Question[0]
-	log.Printf("Received DNS Request for %q from %q", q.Name, w.RemoteAddr())
+	log.Printf("Received DNS Request for %q from %q with type %d", q.Name, w.RemoteAddr(), q.Qtype)
 
 	// If the query does not fall in our s.domain, forward it
 	if !strings.HasSuffix(q.Name, dns.Fqdn(s.domain)) {
@@ -342,34 +358,51 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	m.Authoritative = true
 	m.RecursionAvailable = true
 	m.Answer = make([]dns.RR, 0, 10)
-	defer w.WriteMsg(m)
+	defer func() {
+		// Check if we need to do DNSSEC and sign the reply
+		if s.PublicKey() != nil {
+			if opt := req.IsEdns0(); opt != nil && opt.Do() {
+				s.nsec(m)
+				s.sign(m, opt.UDPSize())
+			}
+		}
+		w.WriteMsg(m)
+	}()
 
-	if q.Qtype == dns.TypeANY || q.Qtype == dns.TypeSRV {
-		records, extra, err := s.getSRVRecords(q)
-
-		if err != nil {
-			// We are authoritative for this name, but it does not exist: NXDOMAIN
-			m.SetRcode(req, dns.RcodeNameError)
-			m.Ns = s.createSOA()
-			log.Println("Error: ", err)
+	if q.Name == dns.Fqdn(s.domain) {
+		switch q.Qtype {
+		case dns.TypeDNSKEY:
+			if s.PublicKey() != nil {
+				m.Answer = append(m.Answer, s.PublicKey())
+				return
+			}
+		case dns.TypeSOA:
+			m.Answer = s.createSOA()
 			return
 		}
-
-		m.Answer = append(m.Answer, records...)
-		m.Extra = append(m.Extra, extra...)
 	}
-
 	if q.Qtype == dns.TypeA || q.Qtype == dns.TypeAAAA {
 		records, err := s.getARecords(q)
 
 		if err != nil {
 			m.SetRcode(req, dns.RcodeNameError)
 			m.Ns = s.createSOA()
-			log.Println("Error: ", err)
 			return
 		}
 		m.Answer = append(m.Answer, records...)
 	}
+	records, extra, err := s.getSRVRecords(q)
+	if err != nil {
+		// We are authoritative for this name, but it does not exist: NXDOMAIN
+		m.SetRcode(req, dns.RcodeNameError)
+		m.Ns = s.createSOA()
+		return
+	}
+	if q.Qtype == dns.TypeANY || q.Qtype == dns.TypeSRV {
+		m.Answer = append(m.Answer, records...)
+		m.Extra = append(m.Extra, extra...)
+	}
+
 	if len(m.Answer) == 0 { // Send back a NODATA response
 		m.Ns = s.createSOA()
 	}
@@ -646,10 +679,8 @@ func (s *Server) addServiceHTTPHandler(w http.ResponseWriter, req *http.Request)
 			log.Println("Error: ", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-
 		return
 	}
-
 	w.WriteHeader(http.StatusCreated)
 }
 
@@ -658,8 +689,10 @@ func (s *Server) removeServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 	stats.RemoveServiceCount.Inc(1)
 	vars := mux.Vars(req)
 
-	var uuid string
-	var ok bool
+	var (
+		uuid string
+		ok   bool
+	)
 
 	if uuid, ok = vars["uuid"]; !ok {
 		http.Error(w, "UUID required", http.StatusBadRequest)
@@ -667,7 +700,6 @@ func (s *Server) removeServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 	}
 
 	if _, err := s.raftServer.Do(NewRemoveServiceCommand(uuid)); err != nil {
-
 		switch err {
 		case registry.ErrNotExists:
 			http.Error(w, err.Error(), http.StatusNotFound)
@@ -677,6 +709,7 @@ func (s *Server) removeServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 			log.Println("Error: ", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
+		return
 	}
 }
 
@@ -769,11 +802,11 @@ func (s *Server) createSOA() []dns.RR {
 	soa := &dns.SOA{Hdr: dns.RR_Header{Name: dom, Rrtype: dns.TypeSOA, Class: dns.ClassINET, Ttl: 3600},
 		Ns:      "master." + dom,
 		Mbox:    "hostmaster." + dom,
-		Serial:  uint32(time.Now().Unix()),
+		Serial:  uint32(time.Now().Truncate(time.Hour).Unix()),
 		Refresh: 28800,
 		Retry:   7200,
 		Expire:  604800,
-		Minttl:  3600,
+		Minttl:  60,
 	}
 	return []dns.RR{soa}
 }

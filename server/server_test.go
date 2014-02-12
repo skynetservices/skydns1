@@ -15,6 +15,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -799,7 +800,7 @@ func TestDNSForward(t *testing.T) {
 	// TODO(miek): DNSSEC DO query
 }
 
-func newTestServer(leader string, secret, nameserver string) *Server {
+func newTestServer(leader, secret, nameserver string) *Server {
 	members := make([]string, 0)
 
 	p, _ := ioutil.TempDir("", "skydns-test-")
@@ -815,4 +816,186 @@ func newTestServer(leader string, secret, nameserver string) *Server {
 	server := NewServer(members, "skydns.local", net.JoinHostPort("127.0.0.1", StrPort), net.JoinHostPort("127.0.0.1", strconv.Itoa(Port+1)), p, 1*time.Second, 1*time.Second, secret, []string{nameserver})
 	server.Start()
 	return server
+}
+
+// DNSSEC tests
+
+func sectionCheck(t *testing.T, resp []dns.RR, tc []dns.RR) {
+	// check the RRs in the response
+	for i, r := range resp {
+		if r.Header().Name != tc[i].Header().Name {
+			t.Errorf("Response should have a Header Name of %q, but has %q", r.Header().Name, tc[i].Header().Name)
+		}
+		if r.Header().Rrtype != tc[i].Header().Rrtype {
+			t.Errorf("Response should have a Header Type of %q, but has %q", r.Header().Rrtype, tc[i].Header().Rrtype)
+		}
+		if r.Header().Ttl != tc[i].Header().Ttl {
+			t.Errorf("Response should have a Header Ttl of %q, but has %q", r.Header().Ttl, tc[i].Header().Ttl)
+		}
+		switch rt := r.(type) {
+		case *dns.DNSKEY:
+			tt := tc[i].(*dns.DNSKEY)
+			if rt.Flags != tt.Flags {
+				t.Errorf("DNSKEY flags should be %q, but is %q", rt.Flags, tt.Flags)
+			}
+			if rt.Protocol != tt.Protocol {
+				t.Errorf("DNSKEY protocol should be %q, but is %q", rt.Protocol, tt.Protocol)
+			}
+			if rt.Algorithm != tt.Algorithm {
+				t.Errorf("DNSKEY algorithm should be %q, but is %q", rt.Algorithm, tt.Algorithm)
+			}
+		case *dns.RRSIG:
+			tt := tc[i].(*dns.RRSIG)
+			if rt.TypeCovered != tt.TypeCovered {
+				t.Errorf("RRSIG type-covered should be %q, but is %q", rt.TypeCovered, tt.TypeCovered)
+			}
+			if rt.Algorithm != tt.Algorithm {
+				t.Errorf("RRSIG algorithm should be %q, but is %q", rt.Algorithm, tt.Algorithm)
+			}
+			if rt.Labels != tt.Labels {
+				t.Errorf("RRSIG label should be %q, but is %q", rt.Labels, tt.Labels)
+			}
+			if rt.OrigTtl != tt.OrigTtl {
+				t.Errorf("RRSIG orig-ttl should be %q, but is %q", rt.OrigTtl, tt.OrigTtl)
+			}
+			if rt.KeyTag != tt.KeyTag {
+				t.Errorf("RRSIG key-tag should be %q, but is %q", rt.KeyTag, tt.KeyTag)
+			}
+			if rt.SignerName != tt.SignerName {
+				t.Errorf("RRSIG signer-name should be %q, but is %q", rt.SignerName, tt.SignerName)
+			}
+		}
+	}
+}
+
+func TestDNSSEC(t *testing.T) {
+	s := newTestServer("", "", "")
+	defer s.Stop()
+
+	for _, m := range services {
+		s.registry.Add(m)
+	}
+	c := new(dns.Client)
+	for _, tc := range dnssecTestCases {
+		m := newMsg(tc)
+		resp, _, err := c.Exchange(m, "localhost:"+StrPort)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sectionCheck(t, resp.Answer, tc.Answer)
+	}
+}
+
+type dnssecTestCase struct {
+	Question dns.Question
+	Answer   []dns.RR
+	Ns       []dns.RR
+	Extra    []dns.RR
+}
+
+var dnssecTestCases = []dnssecTestCase{
+	// DNSKEY Test
+	{
+		Question: dns.Question{"skydns.local.", dns.TypeDNSKEY, dns.ClassINET},
+		Answer: []dns.RR{&dns.DNSKEY{
+			Hdr: dns.RR_Header{
+				Name:   "skydns.local.",
+				Ttl:    origTTL,
+				Rrtype: dns.TypeDNSKEY,
+			},
+			Flags:     256,
+			Protocol:  3,
+			Algorithm: 5,
+			PublicKey: "not important",
+		},
+			&dns.RRSIG{
+				Hdr: dns.RR_Header{
+					Name:   "skydns.local.",
+					Ttl:    origTTL,
+					Rrtype: dns.TypeRRSIG,
+				},
+				TypeCovered: dns.TypeDNSKEY,
+				Algorithm:   5,
+				Labels:      2,
+				OrigTtl:     origTTL,
+				Expiration:  0,
+				Inception:   0,
+				KeyTag:      51945,
+				SignerName:  "skydns.local.",
+				Signature:   "not important",
+			},
+		},
+	},
+}
+
+/*
+	{
+		Question: "region1.*.testservice.production.skydns.local.",
+		Answer: []dns.SRV{
+			{
+				Hdr: dns.RR_Header{
+					Name:   "region1.*.testservice.production.skydns.local.",
+					Ttl:    30,
+					Rrtype: dns.TypeSRV,
+				},
+				Priority: 10,
+				Weight:   100,
+				Target:   "server2.",
+				Port:     9001,
+			},
+			{
+				Hdr: dns.RR_Header{
+					Name:   "region1.*.testservice.production.skydns.local.",
+					Ttl:    33,
+					Rrtype: dns.TypeSRV,
+				},
+				Priority: 20,
+				Weight:   50,
+				Target:   "server5.",
+				Port:     9004,
+			},
+			{
+				Hdr: dns.RR_Header{
+					Name:   "region1.*.testservice.production.skydns.local.",
+					Ttl:    34,
+					Rrtype: dns.TypeSRV,
+				},
+				Priority: 20,
+				Weight:   50,
+				Target:   "server6.",
+				Port:     9005,
+			},
+		},
+	},
+}
+*/
+
+func newTestServerDNSSEC(leader, secret, nameserver string) *Server {
+	s := newTestServer(leader, secret, nameserver)
+	key, _ := dns.NewRR("skydns.local. IN DNSKEY 256 3 5 AwEAAaXfO+DOBMJsQ5H4TfiabwSpqE4cGL0Qlvh5hrQumrjr9eNSdIOjIHJJKCe56qBU5mH+iBlXP29SVf6UiiMjIrAPDVhClLeWFe0PC+XlWseAyRgiLHdQ8r95+AfkhO5aZgnCwYf9FGGSaT0+CRYN+PyDbXBTLK5FN+j5b6bb7z+d")
+	s.dnsKey = key.(*dns.DNSKEY)
+	s.keyTag = s.dnsKey.KeyTag()
+	s.privKey, _ = s.dnsKey.ReadPrivateKey(strings.NewReader(`
+Private-key-format: v1.3
+Algorithm: 5 (RSASHA1)
+Modulus: pd874M4EwmxDkfhN+JpvBKmoThwYvRCW+HmGtC6auOv141J0g6MgckkoJ7nqoFTmYf6IGVc/b1JV/pSKIyMisA8NWEKUt5YV7Q8L5eVax4DJGCIsd1Dyv3n4B+SE7lpmCcLBh/0UYZJpPT4JFg34/INtcFMsrkU36PlvptvvP50=
+PublicExponent: AQAB
+PrivateExponent: C6e08GXphbPPx6j36ZkIZf552gs1XcuVoB4B7hU8P/Qske2QTFOhCwbC8I+qwdtVWNtmuskbpvnVGw9a6X8lh7Z09RIgzO/pI1qau7kyZcuObDOjPw42exmjqISFPIlS1wKA8tw+yVzvZ19vwRk1q6Rne+C1romaUOTkpA6UXsE=
+Prime1: 2mgJ0yr+9vz85abrWBWnB8Gfa1jOw/ccEg8ZToM9GLWI34Qoa0D8Dxm8VJjr1tixXY5zHoWEqRXciTtY3omQDQ==
+Prime2: wmxLpp9rTzU4OREEVwF43b/TxSUBlUq6W83n2XP8YrCm1nS480w4HCUuXfON1ncGYHUuq+v4rF+6UVI3PZT50Q==
+Exponent1: wkdTngUcIiau67YMmSFBoFOq9Lldy9HvpVzK/R0e5vDsnS8ZKTb4QJJ7BaG2ADpno7pISvkoJaRttaEWD3a8rQ==
+Exponent2: YrC8OglEXIGkV3tm2494vf9ozPL6+cBkFsPPg9dXbvVCyyuW0pGHDeplvfUqs4nZp87z8PsoUL+LAUqdldnwcQ==
+Coefficient: mMFr4+rDY5V24HZU3Oa5NEb55iQ56ZNa182GnNhWqX7UqWjcUUGjnkCy40BqeFAQ7lp52xKHvP5Zon56mwuQRw==
+Created: 20140126132645
+Publish: 20140126132645
+Activate: 20140126132645`), "stdin")
+	return s
+}
+
+// newMsg return a new dns.Msg set with DNSSEC and with the question from the tc.
+func newMsg(tc dnssecTestCase) *dns.Msg {
+	m := new(dns.Msg)
+	m.SetQuestion(tc.Question.Name, tc.Question.Qtype)
+	m.SetEdns0(4096, true)
+	return m
 }

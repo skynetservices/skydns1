@@ -260,9 +260,26 @@ nameserver IPs mentioned on the command line.
 Requests for which SkyDNS isn't authoritative
 will be forwarded and proxied back to the client. This means that you can set
 SkyDNS as the primary DNS server in `/etc/resolv.conf` and use it for both service
-discovery and normal DNS operations. 
+discovery and normal DNS operations.
 
 *Please test this before relying on it in production, as there may be edge cases that don't work as planned.*
+
+####DNSSEC
+
+SkyDNS support signing DNS answers (also know as DNSSEC). To use it you need to
+create a DNSSEC keypair and use that in SkyDNS. For instance if the domain for
+SkyDNS is `skydns.local`:
+
+    dnssec-keygen skydns.local
+    Generating key pair............++++++ ...................................++++++
+    Kskydns.local.+005+49860
+
+This creates two files both with the basename `Kskydns.local.+005.49860`, one of the
+extension `.key` (this holds the public key) and one with the extension `.private` which
+hold the private key. The basename of this file should be given to SkyDNS's -dnssec
+option: `-dnssec=Kskydns.local.+005+49860`
+
+If you then query with `dig +dnssec` you will get signatures, keys and nsec records returned.
 
 ## License
 The MIT License (MIT)

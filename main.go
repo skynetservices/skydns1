@@ -5,6 +5,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"github.com/goraft/raft"
 	"github.com/miekg/dns"
@@ -23,6 +24,7 @@ var (
 	discover                           bool
 	secret                             string
 	nameserver                         string
+	dnssec                             string
 )
 
 func init() {
@@ -57,6 +59,7 @@ func init() {
 	flag.DurationVar(&wtimeout, "wtimeout", 2*time.Second, "Write timeout")
 	flag.StringVar(&secret, "secret", "", "Shared secret for use with http api")
 	flag.StringVar(&nameserver, "nameserver", "", "Nameserver address to forward (non-local) queries to e.g. 8.8.8.8:53,8.8.4.4:53")
+	flag.StringVar(&dnssec, "dnssec", "", "Basename of DNSSEC key file e.q. Kskydns.local.+005+38250")
 }
 
 func main() {
@@ -99,6 +102,19 @@ func main() {
 	}
 
 	s := server.NewServer(members, domain, ldns, lhttp, dataDir, rtimeout, wtimeout, secret, nameservers)
+
+	if dnssec != "" {
+		k, p, e := server.ParseKeyFile(dnssec)
+		if e != nil {
+			log.Fatal(e)
+			return
+		}
+		if k.Header().Name != dns.Fqdn(domain) {
+			log.Fatal(errors.New("Owner name of DNSKEY must match SkyDNS domain"))
+			return
+		}
+		s.SetKeys(k, p)
+	}
 
 	stats.Collect()
 
