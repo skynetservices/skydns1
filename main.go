@@ -57,7 +57,7 @@ func init() {
 	flag.DurationVar(&wtimeout, "wtimeout", 2*time.Second, "Write timeout")
 	flag.StringVar(&secret, "secret", "", "Shared secret for use with http api")
 	flag.StringVar(&nameserver, "nameserver", "", "Nameserver address to forward (non-local) queries to e.g. 8.8.8.8:53,8.8.4.4:53")
-	flag.BoolVar(&norr, "noroundrobin", false, "Do not round robin A/AAAA replies")
+	flag.BoolVar(&norr, "no-round-robin", false, "Do not round robin A/AAAA replies")
 }
 
 func main() {
