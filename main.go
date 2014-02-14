@@ -60,7 +60,7 @@ func init() {
 	flag.StringVar(&secret, "secret", "", "Shared secret for use with http api")
 	flag.StringVar(&nameserver, "nameserver", "", "Nameserver address to forward (non-local) queries to e.g. 8.8.8.8:53,8.8.4.4:53")
 	flag.StringVar(&dnssec, "dnssec", "", "Basename of DNSSEC key file e.q. Kskydns.local.+005+38250")
-	flag.BoolVar(&norr, "noroundrobin", false, "Do not round robin A/AAAA replies")
+	flag.BoolVar(&norr, "no-round-robin", false, "Do not round robin A/AAAA replies")
 }
 
 func main() {
