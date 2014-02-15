@@ -392,7 +392,7 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 		m.Answer = append(m.Answer, records...)
 	}
 	records, extra, err := s.getSRVRecords(q)
-	if err != nil {
+	if err != nil && len(m.Answer) == 0 {
 		// We are authoritative for this name, but it does not exist: NXDOMAIN
 		m.SetRcode(req, dns.RcodeNameError)
 		m.Ns = s.createSOA()
@@ -486,8 +486,14 @@ func (s *Server) getARecords(q dns.Question) (records []dns.RR, err error) {
 	)
 
 	services, err = s.registry.Get(key)
-	if err != nil {
-		return
+	if len(services) == 0 && len(key) > 1 {
+		// no services found, it might be that a client is trying to get the IP
+		// for UUID.skydns.local. Try to search for those.
+		service, e := s.registry.GetUUID(key[:len(key)-1])
+		if e == nil {
+			services = append(services, service)
+			err = nil
+		}
 	}
 
 	for _, serv := range services {
