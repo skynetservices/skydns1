@@ -103,7 +103,6 @@ func main() {
 	}
 
 	s := server.NewServer(members, domain, ldns, lhttp, dataDir, rtimeout, wtimeout, secret, nameservers, !norr)
-<<<<<<< HEAD
 
 	if dnssec != "" {
 		k, p, e := server.ParseKeyFile(dnssec)
@@ -117,8 +116,6 @@ func main() {
 		}
 		s.SetKeys(k, p)
 	}
-=======
->>>>>>> 4ae15f347a84502e895c65780fa5bd9e91090781
 
 	stats.Collect()
 
