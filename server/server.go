@@ -73,10 +73,12 @@ type Server struct {
 	dnsKey  *dns.DNSKEY
 	keyTag  uint16
 	privKey dns.PrivateKey
+
+	roundrobin bool
 }
 
 // Newserver returns a new Server.
-func NewServer(members []string, domain string, dnsAddr string, httpAddr string, dataDir string, rt, wt time.Duration, secret string, nameservers []string) (s *Server) {
+func NewServer(members []string, domain string, dnsAddr string, httpAddr string, dataDir string, rt, wt time.Duration, secret string, nameservers []string, roundrobin bool) (s *Server) {
 	s = &Server{
 		members:      members,
 		domain:       domain,
@@ -92,6 +94,7 @@ func NewServer(members []string, domain string, dnsAddr string, httpAddr string,
 		waiter:       new(sync.WaitGroup),
 		secret:       secret,
 		nameservers:  nameservers,
+		roundrobin:   roundrobin,
 	}
 
 	if _, err := os.Stat(s.dataDir); os.IsNotExist(err) {
@@ -383,11 +386,29 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	}
 	if q.Qtype == dns.TypeA || q.Qtype == dns.TypeAAAA {
 		records, err := s.getARecords(q)
-
 		if err != nil {
 			m.SetRcode(req, dns.RcodeNameError)
 			m.Ns = s.createSOA()
 			return
+		}
+		if s.roundrobin {
+			switch l := uint16(len(records)); l {
+			case 1:
+			case 2:
+				if dns.Id()%2 == 0 {
+					records[0], records[1] = records[1], records[0]
+				}
+			default:
+				// Do a minimum of l swap, maximum of 4l swaps
+				for j := 0; j < int(l*(dns.Id()%4+1)); j++ {
+					q := dns.Id() % l
+					p := dns.Id() % l
+					if q == p {
+						p = (p + 1) % l
+					}
+					records[q], records[p] = records[p], records[q]
+				}
+			}
 		}
 		m.Answer = append(m.Answer, records...)
 	}
@@ -751,7 +772,7 @@ func (s *Server) updateServiceHTTPHandler(w http.ResponseWriter, req *http.Reque
 	}
 }
 
-// Handle API get service requests
+// getServiceHTTPHandler handles API get service requests.
 func (s *Server) getServiceHTTPHandler(w http.ResponseWriter, req *http.Request) {
 	stats.GetServiceCount.Inc(1)
 	vars := mux.Vars(req)
@@ -784,8 +805,8 @@ func (s *Server) getServiceHTTPHandler(w http.ResponseWriter, req *http.Request)
 	}
 }
 
-// secrethttphandlerwrapper will wrap a standard handler
-// if the secret is specified for the server
+// authHTTPWrapper will wrap a standard handler
+// if the secret is specified for the server.
 func (s *Server) authHTTPWrapper(handler http.HandlerFunc) http.HandlerFunc {
 	if s.secret != "" {
 		return func(w http.ResponseWriter, req *http.Request) {
@@ -802,7 +823,7 @@ func (s *Server) authHTTPWrapper(handler http.HandlerFunc) http.HandlerFunc {
 	return handler
 }
 
-// Return a SOA record for this SkyDNS instance
+// Return a SOA record for this SkyDNS instance.
 func (s *Server) createSOA() []dns.RR {
 	dom := dns.Fqdn(s.domain)
 	soa := &dns.SOA{Hdr: dns.RR_Header{Name: dom, Rrtype: dns.TypeSOA, Class: dns.ClassINET, Ttl: 3600},
