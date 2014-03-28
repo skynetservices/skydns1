@@ -75,10 +75,11 @@ type Server struct {
 	privKey dns.PrivateKey
 
 	roundrobin bool
+	noExpire   bool
 }
 
 // Newserver returns a new Server.
-func NewServer(members []string, domain string, dnsAddr string, httpAddr string, dataDir string, rt, wt time.Duration, secret string, nameservers []string, roundrobin bool) (s *Server) {
+func NewServer(members []string, domain string, dnsAddr string, httpAddr string, dataDir string, rt, wt time.Duration, secret string, nameservers []string, roundrobin, noExpire bool) (s *Server) {
 	s = &Server{
 		members:      members,
 		domain:       strings.ToLower(domain),
@@ -95,6 +96,7 @@ func NewServer(members []string, domain string, dnsAddr string, httpAddr string,
 		secret:       secret,
 		nameservers:  nameservers,
 		roundrobin:   roundrobin,
+		noExpire:     noExpire,
 	}
 
 	if _, err := os.Stat(s.dataDir); os.IsNotExist(err) {
@@ -255,12 +257,15 @@ func (s *Server) Members() (members []string) {
 }
 
 func (s *Server) run() {
-	sig := make(chan os.Signal)
+	var (
+		tick <-chan time.Time
+		sig  = make(chan os.Signal)
+	)
+	if !s.noExpire {
+		tick = time.Tick(1 * time.Second)
+	}
 	signal.Notify(sig, os.Interrupt)
 
-	tick := time.Tick(1 * time.Second)
-
-run:
 	for {
 		select {
 		case <-tick:
@@ -277,10 +282,10 @@ run:
 				}
 			}
 		case <-sig:
-			break run
+			s.Stop()
+			return
 		}
 	}
-	s.Stop()
 }
 
 // Join joins an existing SkyDNS cluster.
