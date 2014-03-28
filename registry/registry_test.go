@@ -152,6 +152,17 @@ func TestGet(t *testing.T) {
 		t.Fatal("Failed to return correct services")
 	}
 
+	// Test case-insensitive
+	results, err = reg.Get("123.localhost.Test.1-0-0.TestService.production")
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(results) != 1 {
+		t.Fatal("Failed to return correct services")
+	}
+
 	// Test Wildcard
 	results, err = reg.Get("*.localhost.test.*.testservice.production")
 

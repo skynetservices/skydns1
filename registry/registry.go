@@ -225,6 +225,9 @@ func (r *DefaultRegistry) Get(domain string) ([]msg.Service, error) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
+	// Ensure we are using lowercase keys, as this is the way they are stored
+	domain = strings.ToLower(domain)
+
 	// DNS queries have a trailing .
 	if strings.HasSuffix(domain, ".") {
 		domain = domain[:len(domain)-1]
