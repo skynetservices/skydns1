@@ -21,7 +21,7 @@ import (
 var (
 	join, ldns, lhttp, dataDir, domain string
 	rtimeout, wtimeout                 time.Duration
-	discover,norr                      bool
+	discover, norr                     bool
 	secret                             string
 	nameserver                         string
 	dnssec                             string

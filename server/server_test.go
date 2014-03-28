@@ -658,6 +658,8 @@ var dnsTestCases = []dnsTestCase{
 			},
 		},
 	},
+
+	// TODO: Test for case insensitive, this causes an error within the dns package though
 }
 
 type servicesTest struct {
@@ -671,6 +673,7 @@ var serviceTestArray []servicesTest = []servicesTest{
 	{"testservice.production", 3},
 	{"region1.*.*.production", 1},
 	{"region1.*.testservice.production", 1},
+	{"region1.*.TestService.production", 1},
 }
 
 func TestGetServicesWithQueries(t *testing.T) {
