@@ -856,6 +856,60 @@ func TestDNSQnameTooLong(t *testing.T) {
 	}
 }
 
+func TestDNSQnameTooLong(t *testing.T) {
+	// we should reply with NXDOMAIN for names that are too long
+	s := newTestServer("", "", "")
+	defer s.Stop()
+	msg := msg.Service{
+		Name:        "web",
+		Version:     "1.0.0",
+		Region:      "test",
+		Host:        "localhost",
+		Environment: "production",
+		Port:        9000,
+		TTL:         4,
+	}
+	b, err := json.Marshal(msg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, _ := http.NewRequest("PUT", "/skydns/services/123", bytes.NewBuffer(b))
+	resp := httptest.NewRecorder()
+	s.router.ServeHTTP(resp, req)
+	if resp.Code != 201 || s.registry.Len() != 1 {
+		t.Fatal("Failed to add service")
+	}
+	c := new(dns.Client)
+	m := new(dns.Msg)
+	// Our maximum length domain name, this should return an answer
+	m.SetQuestion("test.1-0-0.web.production.skydns.local.", dns.TypeSRV)
+	dnsresp, _, err := c.Exchange(m, "localhost:"+StrPort)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(dnsresp.Answer) != 1 {
+		t.Fatal("Answer expected to have 1 SRV records but has", len(dnsresp.Answer))
+	}
+	// This should return NXDOMAIN
+	m.SetQuestion("bla.test.1-0-0.web.production.skydns.local.", dns.TypeSRV)
+	dnsresp, _, err = c.Exchange(m, "localhost:"+StrPort)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dnsresp.Rcode != dns.RcodeNameError {
+		t.Fatal("Answer expected to be NXDOMAIN, but is", dnsresp.Rcode)
+	}
+	// This should return NXDOMAIN too, but didn't
+	m.SetQuestion("*.test.1-0-0.web.production.skydns.local.", dns.TypeSRV)
+	dnsresp, _, err = c.Exchange(m, "localhost:"+StrPort)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dnsresp.Rcode != dns.RcodeNameError {
+		t.Fatal("Answer expected to be NXDOMAIN, but is", dnsresp.Rcode)
+	}
+}
+
 func newTestServer(leader, secret, nameserver string) *Server {
 	members := make([]string, 0)
 

@@ -234,7 +234,7 @@ func (r *DefaultRegistry) Get(domain string) ([]msg.Service, error) {
 	}
 
 	tree := dns.SplitDomainName(domain)
-	if len(tree) >= 6 {
+	if len(tree) > 6 {
 		return nil, ErrNotExists
 	}
 	// Domains can be partial, and we should assume wildcards for the unsupplied portions
