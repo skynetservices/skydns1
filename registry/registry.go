@@ -257,8 +257,10 @@ func (r *DefaultRegistry) GetExpired() (uuids []string) {
 	now := time.Now()
 
 	for _, n := range r.nodes {
-		if now.After(n.value.Expires) {
-			uuids = append(uuids, n.value.UUID)
+		if !n.value.NoExpire {
+			if now.After(n.value.Expires) {
+				uuids = append(uuids, n.value.UUID)
+			}
 		}
 	}
 

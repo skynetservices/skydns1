@@ -21,7 +21,7 @@ import (
 var (
 	join, ldns, lhttp, dataDir, domain string
 	rtimeout, wtimeout                 time.Duration
-	discover, norr, noExpire           bool
+	discover, norr                     bool
 	secret                             string
 	nameserver                         string
 	dnssec                             string
@@ -61,7 +61,6 @@ func init() {
 	flag.StringVar(&nameserver, "nameserver", "", "Nameserver address to forward (non-local) queries to e.g. 8.8.8.8:53,8.8.4.4:53")
 	flag.StringVar(&dnssec, "dnssec", "", "Basename of DNSSEC key file e.q. Kskydns.local.+005+38250")
 	flag.BoolVar(&norr, "no-round-robin", false, "Do not round robin A/AAAA replies")
-	flag.BoolVar(&noExpire, "no-expire", false, "Do not expire records based on their TTL")
 }
 
 func main() {
@@ -103,7 +102,7 @@ func main() {
 		members = strings.Split(join, ",")
 	}
 
-	s := server.NewServer(members, domain, ldns, lhttp, dataDir, rtimeout, wtimeout, secret, nameservers, !norr, noExpire)
+	s := server.NewServer(members, domain, ldns, lhttp, dataDir, rtimeout, wtimeout, secret, nameservers, !norr)
 
 	if dnssec != "" {
 		k, p, e := server.ParseKeyFile(dnssec)
