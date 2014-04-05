@@ -27,6 +27,10 @@ import (
 	"time"
 )
 
+const (
+  raftElectionTimeout = 200 * time.Millisecond
+)
+
 /* TODO:
    Set Priority based on Region
    Dynamically set Weight/Priority in DNS responses
@@ -149,7 +153,7 @@ func (s *Server) Start() (*sync.WaitGroup, error) {
 	log.Printf("Initializing Server. DNS Addr: %q, HTTP Addr: %q, Data Dir: %q, Forwarders: %q", s.dnsAddr, s.httpAddr, s.dataDir, s.nameservers)
 
 	// Initialize and start Raft server.
-	transporter := raft.NewHTTPTransporter("/raft")
+	transporter := raft.NewHTTPTransporter("/raft", raftElectionTimeout)
 	s.raftServer, err = raft.NewServer(s.HTTPAddr(), s.dataDir, transporter, nil, s.registry, "")
 	if err != nil {
 		log.Fatal(err)
