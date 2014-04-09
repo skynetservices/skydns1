@@ -24,6 +24,7 @@ type Service struct {
 	TTL         uint32 // Seconds
 	Expires     time.Time
 	Callback    map[string]Callback `json:"-"` // Callbacks are found by UUID
+	NoExpire    bool                // don't expire the service based on the ttl
 }
 
 // RemainingTTL returns the amount of time remaining before expiration.

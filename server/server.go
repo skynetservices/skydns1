@@ -255,15 +255,16 @@ func (s *Server) Members() (members []string) {
 }
 
 func (s *Server) run() {
-	sig := make(chan os.Signal)
+	var (
+		tick = time.NewTicker(1 * time.Second)
+		sig  = make(chan os.Signal)
+	)
 	signal.Notify(sig, os.Interrupt)
+	defer tick.Stop()
 
-	tick := time.Tick(1 * time.Second)
-
-run:
 	for {
 		select {
-		case <-tick:
+		case <-tick.C:
 			// We are the leader, we are responsible for managing TTLs
 			if s.IsLeader() {
 				expired := s.registry.GetExpired()
@@ -277,10 +278,10 @@ run:
 				}
 			}
 		case <-sig:
-			break run
+			s.Stop()
+			return
 		}
 	}
-	s.Stop()
 }
 
 // Join joins an existing SkyDNS cluster.
