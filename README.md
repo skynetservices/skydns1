@@ -72,8 +72,15 @@ see the section named "Wildcards" below for more information.
 You have the ability to use a shared secret with SkyDns. To take advantage of the shared secret you would start skydns with the -secret=<secretString> flag.
 `curl -X PUT -H "Authorization mysupersecretsharedsecret" -L http://localhost:8080/skydns/services/1001 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"web1.site.com","Port":9000,"TTL":10}'`
 
-If unsuccessful you should receive an HTTP status code of: **403 Forbidden**
+If unsuccessful you should receive an HTTP status code of: **401 Unauthorized**
 
+#### Starting with TLS 
+If you supply the flags --tls-key and --tls-pem Skydns will assume your http interface should be tls. To start with tls  it should look something like this. 
+
+```bash
+go run main.go --tls-key=/path/to/secret.key --tls-pem=/path/to/cert.pem
+
+```
 #### Result 
 
 If successful you should receive an HTTP status code of: **201 Created**
