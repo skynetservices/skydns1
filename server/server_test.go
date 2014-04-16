@@ -338,7 +338,7 @@ func TestAuthenticationFailure(t *testing.T) {
 	resp := httptest.NewRecorder()
 
 	s.router.ServeHTTP(resp, req)
-	if resp.Code != 403 {
+	if resp.Code != 401 {
 		t.Fatal("Authentication should have failed and it worked.")
 	}
 }
@@ -816,7 +816,7 @@ func newTestServer(leader, secret, nameserver string) *Server {
 
 	Port += 10
 	StrPort = strconv.Itoa(Port)
-	server := NewServer(members, "skydns.local", net.JoinHostPort("127.0.0.1", StrPort), net.JoinHostPort("127.0.0.1", strconv.Itoa(Port+1)), p, 1*time.Second, 1*time.Second, secret, []string{nameserver}, false)
+	server := NewServer(members, "skydns.local", net.JoinHostPort("127.0.0.1", StrPort), net.JoinHostPort("127.0.0.1", strconv.Itoa(Port+1)), p, 1*time.Second, 1*time.Second, secret, []string{nameserver}, false, "", "")
 	server.Start()
 	return server
 }

@@ -25,6 +25,8 @@ var (
 	secret                             string
 	nameserver                         string
 	dnssec                             string
+	tlskey                             string
+	tlspem                             string
 )
 
 func init() {
@@ -61,6 +63,8 @@ func init() {
 	flag.StringVar(&nameserver, "nameserver", "", "Nameserver address to forward (non-local) queries to e.g. 8.8.8.8:53,8.8.4.4:53")
 	flag.StringVar(&dnssec, "dnssec", "", "Basename of DNSSEC key file e.q. Kskydns.local.+005+38250")
 	flag.BoolVar(&norr, "no-round-robin", false, "Do not round robin A/AAAA replies")
+	flag.StringVar(&tlskey, "tls-key", "", "TLS Private Key Path")
+	flag.StringVar(&tlspem, "tls-pem", "", "X509 Certificate")
 }
 
 func main() {
@@ -102,7 +106,7 @@ func main() {
 		members = strings.Split(join, ",")
 	}
 
-	s := server.NewServer(members, domain, ldns, lhttp, dataDir, rtimeout, wtimeout, secret, nameservers, !norr)
+	s := server.NewServer(members, domain, ldns, lhttp, dataDir, rtimeout, wtimeout, secret, nameservers, !norr, tlskey, tlspem)
 
 	if dnssec != "" {
 		k, p, e := server.ParseKeyFile(dnssec)

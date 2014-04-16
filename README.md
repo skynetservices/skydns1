@@ -38,6 +38,8 @@ Which takes the following flags
 - -secret - When this variable is set, the HTTP api will require an authorization header that matches the secret passed to skydns when it starts  
 - -nameserver - Nameserver address to forward (non-local) queries to e.g. "8.8.8.8:53,8.8.4.4:53", in other words an IP:PORT, where multiple nameservers maybe listed separated by a comma "`,`". If this list is empty (""),
 SkyDNS will parse /etc/resolv.conf and will use the nameservers listed there.
+- -tlskey - The path to the secret key to unlock your ssl cert. 
+- -tlspem - The path to the X509 certificate that will secure skydns.
 
 ##API
 ### Service Announcements
@@ -72,7 +74,15 @@ see the section named "Wildcards" below for more information.
 You have the ability to use a shared secret with SkyDns. To take advantage of the shared secret you would start skydns with the -secret=<secretString> flag.
 `curl -X PUT -H "Authorization mysupersecretsharedsecret" -L http://localhost:8080/skydns/services/1001 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"web1.site.com","Port":9000,"TTL":10}'`
 
-If unsuccessful you should receive an HTTP status code of: **403 Forbidden**
+If unsuccessful you should receive an HTTP status code of: **401 Unauthorized**
+
+#### Starting with TLS 
+If you supply the flags --tls-key and --tls-pem Skydns will assume your http interface should be tls. To start with tls  it should look something like this. 
+
+```bash
+go run main.go --tls-key=/path/to/secret.key --tls-pem=/path/to/cert.pem
+
+```
 
 #### Result 
 

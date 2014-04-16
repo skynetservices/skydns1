@@ -6,15 +6,10 @@ package server
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/goraft/raft"
-	"github.com/gorilla/mux"
-	"github.com/miekg/dns"
-	"github.com/skynetservices/skydns/msg"
-	"github.com/skynetservices/skydns/registry"
-	"github.com/skynetservices/skydns/stats"
 	"log"
 	"math"
 	"net"
@@ -25,10 +20,18 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	//non-builtin packages should go below.
+	"github.com/goraft/raft"
+	"github.com/gorilla/mux"
+	"github.com/miekg/dns"
+	"github.com/skynetservices/skydns/msg"
+	"github.com/skynetservices/skydns/registry"
+	"github.com/skynetservices/skydns/stats"
 )
 
 const (
-  raftElectionTimeout = 200 * time.Millisecond
+	raftElectionTimeout = 200 * time.Millisecond
 )
 
 /* TODO:
@@ -79,10 +82,14 @@ type Server struct {
 	privKey dns.PrivateKey
 
 	roundrobin bool
+
+	//private key and pem for tls
+	tlskey string
+	tlspem string
 }
 
 // Newserver returns a new Server.
-func NewServer(members []string, domain string, dnsAddr string, httpAddr string, dataDir string, rt, wt time.Duration, secret string, nameservers []string, roundrobin bool) (s *Server) {
+func NewServer(members []string, domain string, dnsAddr string, httpAddr string, dataDir string, rt, wt time.Duration, secret string, nameservers []string, roundrobin bool, tlskey string, tlspem string) (s *Server) {
 	s = &Server{
 		members:      members,
 		domain:       strings.ToLower(domain),
@@ -99,6 +106,8 @@ func NewServer(members []string, domain string, dnsAddr string, httpAddr string,
 		secret:       secret,
 		nameservers:  nameservers,
 		roundrobin:   roundrobin,
+		tlskey:       tlskey,
+		tlspem:       tlspem,
 	}
 
 	if _, err := os.Stat(s.dataDir); os.IsNotExist(err) {
@@ -654,9 +663,36 @@ func (s *Server) listenAndServe() {
 	}()
 
 	go func() {
-		err := s.httpServer.ListenAndServe()
-		if err != nil {
-			log.Fatalf("Start http listener on %s failed:%s", s.httpServer.Addr, err.Error())
+		if s.tlskey != "" {
+			log.Print("Starting http server with tls")
+			var err error
+			config := &tls.Config{}
+			if s.httpServer.TLSConfig != nil {
+				*config = *s.httpServer.TLSConfig
+			}
+			if config.NextProtos == nil {
+				config.NextProtos = []string{"http/1.1"}
+			}
+
+			config.Certificates = make([]tls.Certificate, 1)
+			config.Certificates[0], err = tls.LoadX509KeyPair(s.tlspem, s.tlskey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			config.BuildNameToCertificate()
+			conn, err := net.Listen("tcp", s.httpAddr)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			tlsListener := tls.NewListener(conn, config)
+			s.httpServer.Serve(tlsListener)
+		} else {
+			log.Print("Starting http server without tls")
+			err := s.httpServer.ListenAndServe()
+			if err != nil {
+				log.Fatalf("Start http listener on %s failed:%s", s.httpServer.Addr, err.Error())
+			}
 		}
 	}()
 }
@@ -673,7 +709,7 @@ func (s *Server) redirectToLeader(w http.ResponseWriter, req *http.Request) {
 // shared auth method on server.
 func (s *Server) authenticate(secret string) (err error) {
 	if s.secret != "" && secret != s.secret {
-		err = errors.New("Forbidden")
+		err = errors.New("Unauthorized")
 	}
 	return
 }
@@ -823,7 +859,7 @@ func (s *Server) authHTTPWrapper(handler http.HandlerFunc) http.HandlerFunc {
 			secret := req.Header.Get("Authorization")
 
 			if err := s.authenticate(secret); err != nil {
-				http.Error(w, err.Error(), http.StatusForbidden)
+				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			}
 			handler(w, req)
