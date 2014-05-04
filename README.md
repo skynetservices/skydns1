@@ -1,3 +1,15 @@
+#SkyDNS2
+
+This is an heads up that this version of SkyDNS is going to be replaced by 
+[SkyDNS2](https://github.com/skynetservices/skydns2) which is backed by etcd.
+
+*This* version will then be available under <http://github.com/skynetservices/skydns1>.
+
+Things are different in version 2, so please try it and report back any problems, success
+stories or whatever. You can report issues here or in the skydns2 repository.
+
+We expect this change to take place somewhere mid May 2014, unless issues pop up.
+
 #SkyDNS [![Build Status](https://travis-ci.org/skynetservices/skydns.png)](https://travis-ci.org/skynetservices/skydns)
 *Version 0.2.0*
 
