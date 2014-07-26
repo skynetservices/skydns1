@@ -25,9 +25,9 @@ import (
 	"github.com/goraft/raft"
 	"github.com/gorilla/mux"
 	"github.com/miekg/dns"
-	"github.com/skynetservices/skydns/msg"
-	"github.com/skynetservices/skydns/registry"
-	"github.com/skynetservices/skydns/stats"
+	"github.com/skynetservices/skydns1/msg"
+	"github.com/skynetservices/skydns1/registry"
+	"github.com/skynetservices/skydns1/stats"
 )
 
 const (
