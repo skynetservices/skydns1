@@ -1,6 +1,6 @@
 #SkyDNS2
 
-This is an heads up that this version of SkyDNS is going to be replaced by 
+This is an heads up that this version of SkyDNS is going to be replaced by
 [SkyDNS2](https://github.com/skynetservices/skydns1) which is backed by etcd.
 
 *This* version will then be available under <http://github.com/skynetservices/skydns1>.
@@ -47,10 +47,10 @@ Which takes the following flags
 - -metricsToStdErr - When this flag is set to true, metrics will be periodically written to standard error
 - -graphiteServer - When this flag is set to a Graphite Server URL:PORT, metrics will be posted to a graphite server
 - -stathatUser - When this flag is set to a valid StatHat user, metrics will be posted to that user's StatHat account periodically
-- -secret - When this variable is set, the HTTP api will require an authorization header that matches the secret passed to skydns when it starts  
+- -secret - When this variable is set, the HTTP api will require an authorization header that matches the secret passed to skydns when it starts
 - -nameserver - Nameserver address to forward (non-local) queries to e.g. "8.8.8.8:53,8.8.4.4:53", in other words an IP:PORT, where multiple nameservers maybe listed separated by a comma "`,`". If this list is empty (""),
 SkyDNS will parse /etc/resolv.conf and will use the nameservers listed there.
-- -tlskey - The path to the secret key to unlock your ssl cert. 
+- -tlskey - The path to the secret key to unlock your ssl cert.
 - -tlspem - The path to the X509 certificate that will secure skydns.
 
 ##API
@@ -79,24 +79,24 @@ note the `<service>` corresponds with the Name given above.
 Note some of these elements may contain a wildcard or be left out completely,
 see the section named "Wildcards" below for more information.
 
-#### Without Shared Secret 
+#### Without Shared Secret
 `curl -X PUT -L http://localhost:8080/skydns/services/1001 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"web1.site.com","Port":9000,"TTL":10}'`
 
-#### With Shared Secret 
+#### With Shared Secret
 You have the ability to use a shared secret with SkyDns. To take advantage of the shared secret you would start skydns with the -secret=<secretString> flag.
 `curl -X PUT -H "Authorization mysupersecretsharedsecret" -L http://localhost:8080/skydns/services/1001 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"Test","Host":"web1.site.com","Port":9000,"TTL":10}'`
 
 If unsuccessful you should receive an HTTP status code of: **401 Unauthorized**
 
-#### Starting with TLS 
-If you supply the flags --tls-key and --tls-pem Skydns will assume your http interface should be tls. To start with tls  it should look something like this. 
+#### Starting with TLS
+If you supply the flags --tls-key and --tls-pem Skydns will assume your http interface should be tls. To start with tls  it should look something like this.
 
 ```bash
 go run main.go --tls-key=/path/to/secret.key --tls-pem=/path/to/cert.pem
 
 ```
 
-#### Result 
+#### Result
 
 If successful you should receive an HTTP status code of: **201 Created**
 
@@ -156,7 +156,7 @@ Priorities and Weights are based on the requested Region, as well as how many no
 ###Domain Format
 The domain syntax when querying follows a pattern where the right
 most positions are more generic, than the subdomains to their left:
-*\<uuid\>.\<host\>.\<region\>.\<version\>.\<service\>.\<environment\>.skydns.local*. 
+*\<uuid\>.\<host\>.\<region\>.\<version\>.\<service\>.\<environment\>.skydns.local*.
 This allows for you to supply only the positions you care about:
 
 - authservice.production.skydns.local - For instance would return all services with the name AuthService in the production environment, regardless of the Version, Region, or Host
@@ -175,13 +175,13 @@ Let's take a look at some results. First we need to add a few services so we hav
 
 	// Service 1001 (East Region)
 	curl -X PUT -L http://localhost:8080/skydns/services/1001 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"East","Host":"web1.site.com","Port":80,"TTL":4000}'
-	
+
 	// Service 1002 (East Region)
 	curl -X PUT -L http://localhost:8080/skydns/services/1002 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"East","Host":"web2.site.com","Port":8080,"TTL":4000}'
-	
+
 	// Service 1003 (West Region)
 	curl -X PUT -L http://localhost:8080/skydns/services/1003 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"West","Host":"web3.site.com","Port":80,"TTL":4000}'
-	
+
 	// Service 1004 (West Region)
 	curl -X PUT -L http://localhost:8080/skydns/services/1004 -d '{"Name":"TestService","Version":"1.0.0","Environment":"Production","Region":"West","Host":"web4.site.com","Port":80,"TTL":4000}'
 
