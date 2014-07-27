@@ -6,8 +6,8 @@ package server
 
 import (
 	"github.com/goraft/raft"
-	"github.com/skynetservices/skydns/msg"
-	"github.com/skynetservices/skydns/registry"
+	"github.com/skynetservices/skydns1/msg"
+	"github.com/skynetservices/skydns1/registry"
 	"log"
 	"time"
 )

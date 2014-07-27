@@ -6,7 +6,7 @@ package server
 
 import (
 	"encoding/json"
-	"github.com/skynetservices/skydns/registry"
+	"github.com/skynetservices/skydns1/registry"
 	"log"
 	"net/http"
 )

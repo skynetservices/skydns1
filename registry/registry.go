@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/miekg/dns"
-	"github.com/skynetservices/skydns/msg"
+	"github.com/skynetservices/skydns1/msg"
 	"log"
 	"sort"
 	"strings"
