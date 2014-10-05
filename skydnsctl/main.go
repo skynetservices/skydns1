@@ -60,8 +60,8 @@ func loadCommands(app *cli.App) {
 	app.Action = getAction
 
 	app.Flags = []cli.Flag{
-		cli.BoolFlag{"json", "output to json"},
-		cli.StringFlag{"host", os.Getenv("SKYDNS"), "url to SkyDNS's HTTP endpoints (defaults to env. var. SKYDNS)"},
+		cli.BoolFlag{"json", "output to json", ""},
+		cli.StringFlag{"host", os.Getenv("SKYDNS"), "url to SkyDNS's HTTP endpoints (defaults to env. var. SKYDNS)", ""},
 		cli.StringFlag{"dns",
 			func() string {
 				if x := os.Getenv("SKYDNS_DNS"); x != "" {
@@ -71,15 +71,15 @@ func loadCommands(app *cli.App) {
 					return "http://" + x // default to http for now
 				}
 				return "127.0.0.1:53"
-			}(), "DNS port of SkyDNS's DNS endpoint (defaults to env. var. SKYDNS_DNS)"},
+			}(), "DNS port of SkyDNS's DNS endpoint (defaults to env. var. SKYDNS_DNS)", ""},
 		cli.StringFlag{"domain",
 			func() string {
 				if x := os.Getenv("SKYDNS_DOMAIN"); x != "" {
 					return x
 				}
 				return "skydns.local"
-			}(), "DNS domain of SkyDNS (defaults to env. var. SKYDNS_DOMAIN))"},
-		cli.StringFlag{"secret", "", "secret to authenticate with"},
+			}(), "DNS domain of SkyDNS (defaults to env. var. SKYDNS_DOMAIN))", ""},
+		cli.StringFlag{"secret", "", "secret to authenticate with", ""},
 	}
 
 	app.Commands = []cli.Command{
