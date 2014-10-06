@@ -87,7 +87,7 @@ func loadCommands(app *cli.App) {
 			Name:   "list",
 			Usage:  "list a service from skydns",
 			Action: getAction,
-			Flags:  []cli.Flag{cli.BoolFlag{"d", "use DNS instead of HTTP"}},
+			Flags:  []cli.Flag{cli.BoolFlag{"d", "use DNS instead of HTTP", ""}},
 		},
 		{
 			Name:   "add",
