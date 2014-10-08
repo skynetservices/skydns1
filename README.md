@@ -1,7 +1,7 @@
 #SkyDNS2
 
 This is an heads up that this version of SkyDNS is going to be replaced by
-[SkyDNS2](https://github.com/skynetservices/skydns1) which is backed by etcd.
+[SkyDNS2](https://github.com/skynetservices/skydns) which is backed by etcd.
 
 *This* version will then be available under <http://github.com/skynetservices/skydns1>.
 
