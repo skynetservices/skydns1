@@ -65,7 +65,6 @@ after-script() {
 #
 after-success() {
   go install . ./...
-  $HOME/gopath/bin/skydns1 --help
 }
 
 # before-deploy
@@ -73,7 +72,8 @@ after-success() {
 # Clean up after the tests.
 #
 before-deploy() {
-  echo
+  mv $HOME/gopath/bin/skydns1 $TRAVIS_BUILD_DIR/built/skydns
+  mv $HOME/gopath/bin/skydnsctl $TRAVIS_BUILD_DIR/built/skydnsctl
 }
 
 # after-deploy
@@ -130,7 +130,7 @@ case $COMMAND in
     ;;
 
   after-script)
-    run_command after_script
+    run_command after-script
     ;;
 
   after-success)

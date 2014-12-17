@@ -30,3 +30,16 @@ notifications:
     - mike@kalamuna.com
     - ben@kalamuna.com
     on_success: always
+deploy:
+  provider: releases
+  api_key:
+    secure: IBRowapAs054LC/zBYzhQMBM/h8w1qrySdzQcs7F5Kgn6gdGEfGrBnbdJpHQ66JwPewBy6O76My/TMxYzOIqD9osRF3/TAn/PSyKEjGPgJrVwY8PO56XMuHNyLsq6iv9KLpAEXmXQmdvFNNlnfYdhVUXTCgKgJ0Xx49gBqesCYo=
+  file:
+  - skydns
+  - skydnsctl
+  on:
+    repo: kalabox/skydns1
+    all_branches: true
+    tags: true
+  skip_cleanup: true
+
