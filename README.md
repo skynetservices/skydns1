@@ -1,9 +1,11 @@
-#SkyDNS2
+#Kalbox SkyDNS1
 
-This is an heads up that this version of SkyDNS is going to be replaced by
-[SkyDNS2](https://github.com/skynetservices/skydns) which is backed by etcd.
+This is an implementation of skydns1 for Kalabox. We are forking this repo
+basically just to spit out a binary we can use in our kalabox/skydns container.
 
-*This* version will then be available under <http://github.com/skynetservices/skydns1>.
+Feel free to use the binary as well but YMMV!
+
+The canonical repo is over here: <http://github.com/skynetservices/skydns1>.
 
 Things are different in version 2, so please try it and report back any problems, success
 stories or whatever. You can report issues here or in the skydns2 repository.

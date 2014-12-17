@@ -8,7 +8,7 @@ before_install:
 - chmod +x $HOME/travis-ci.sh
 - $HOME/travis-ci.sh before-install
 install:
-- $HOME/travis-ci.sh before-install
+- $HOME/travis-ci.sh install
 before_script:
 - $HOME/travis-ci.sh before-script
 script:
@@ -42,4 +42,3 @@ deploy:
     all_branches: true
     tags: true
   skip_cleanup: true
-
