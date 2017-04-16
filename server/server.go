@@ -472,6 +472,37 @@ Redo:
 	r, _, err := c.Exchange(req, s.nameservers[nsid])
 	if err == nil {
 		log.Printf("Forwarded DNS Request %q to %q", req.Question[0].Name, s.nameservers[nsid])
+        for i, a := range r.Answer {
+            if k, found := a.(*dns.CNAME); found {
+                if strings.HasSuffix(k.Target, dns.Fqdn(s.domain)) {
+                    records, err := s.getARecords(dns.Question{k.Target, dns.TypeA, dns.ClassINET})
+                    if err == nil {
+                        if s.roundrobin {
+                            switch l := uint16(len(records)); l {
+                            case 1:
+                            case 2:
+                                if dns.Id()%2 == 0 {
+                                    records[0], records[1] = records[1], records[0]
+                                }
+                            default:
+                                // Do a minimum of l swap, maximum of 4l swaps
+                                for j := 0; j < int(l*(dns.Id()%4+1)); j++ {
+                                    q := dns.Id() % l
+                                    p := dns.Id() % l
+                                    if q == p {
+                                        p = (p + 1) % l
+                                    }
+                                    records[q], records[p] = records[p], records[q]
+                                }
+                            }
+                        }
+                        r.Answer = append(r.Answer[:i+1], records...)
+                        w.WriteMsg(r)
+                        return
+                    }
+                }
+            }
+        }
 		w.WriteMsg(r)
 		return
 	}
